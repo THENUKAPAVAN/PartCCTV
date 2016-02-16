@@ -11,6 +11,8 @@ class PartCCTVClass {
     protected $currentJobs = array();
 
     public function __construct() {
+		echo "---".PHP_EOL;
+		echo "---".PHP_EOL;
         echo "Сonstructed daemon controller".PHP_EOL;
         // Ждем сигналы SIGTERM и SIGCHLD
         pcntl_signal(SIGTERM, array($this, "childSignalHandler"));
@@ -60,7 +62,7 @@ protected function launchJob($id,$source) {
             echo "Начинаю запись камеры с id ".$id.PHP_EOL;
 			while(TRUE) {
 			exec('mkdir id'.$id);	
-			exec('ffmpeg -i "'.$source.'" -c copy -map 0 -f segment -segment_time 3600 -segment_atclocktime 1 -segment_format mp4 -strftime 1 "id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4"');
+			exec('ffmpeg -i "'.$source.'" -c copy -map 0 -f segment -segment_time 900 -segment_atclocktime 1 -segment_format mp4 -strftime 1 "id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4"');
 			sleep(10);
 			echo "Прервалась запись камеры с id ".$id." ,перезапускаю...".PHP_EOL;
 			}
