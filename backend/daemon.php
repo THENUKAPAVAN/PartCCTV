@@ -17,7 +17,7 @@ fclose(STDOUT);
 fclose(STDERR);
 $STDIN = fopen('/dev/null', 'r');
 $STDOUT = fopen($baseDir.'/application.log', 'ab');
-$STDERR = fopen($baseDir.'/daemon.log', 'ab');
+$STDERR = fopen('/dev/null', 'r');
 
 //Поехали!
 

@@ -7,9 +7,6 @@ declare(ticks=1);
 
 
 class PartCCTVClass {
-    // Максимальное количество дочерних процессов (зависит от количества включенных камер)
-    // Когда установится в TRUE, демон завершит работу
-    protected $stop_server = FALSE;
     // Здесь будем хранить запущенные дочерние процессы
     protected $currentJobs = array();
 
@@ -25,6 +22,8 @@ class PartCCTVClass {
 		$mysql = mysqli_connect('localhost', 'root', 'cctv', 'cctv');
 		$maxProcesses = mysqli_num_rows(mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'"));
 		echo "Максимум процессов: $maxProcesses".PHP_EOL;
+		$camera = mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'");
+		mysqli_close($mysql);
         // Гоняем бесконечный цикл
         while(TRUE) {
             // Если уже запущено максимальное количество дочерних процессов, ждем их завершения
@@ -32,13 +31,10 @@ class PartCCTVClass {
                  sleep(60);
             }
 
-			$camera = mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'");
-			mysqli_close($mysql);  
-
             //Для каждой камеры запускаем свой дочерний процесс			
 			while ($row = $camera->fetch_assoc()) {
 				echo "Запускаем процесс...".PHP_EOL;
-			    $this->launchJob($row[id],$row[source]);
+			    $this->launchJob($row['id'],$row['source']);
 			}
         } 
     } 
@@ -63,8 +59,9 @@ protected function launchJob($id,$source) {
             echo "Запущен процесс с ID ".getmypid().PHP_EOL;
             echo "Начинаю запись камеры с id ".$id.PHP_EOL;
 			while(TRUE) {
-			exec('ffmpeg -i "'.$source.'" -c copy -map 0 -f segment -segment_time 3600 -segment_atclocktime 1 -segment_format mp4 "id'.$id.'-%03d.mp4"' . ' > /dev/null');
-			sleep(60);
+			exec('mkdir id'.$id);	
+			exec('ffmpeg -i "'.$source.'" -c copy -map 0 -f segment -segment_time 3600 -segment_atclocktime 1 -segment_format mp4 -strftime 1 "id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4"');
+			sleep(10);
 			echo "Прервалась запись камеры с id ".$id." ,перезапускаю...".PHP_EOL;
 			}
         } 
@@ -72,14 +69,23 @@ protected function launchJob($id,$source) {
     } 
 	
     public function childSignalHandler($signo, $pid = null, $status = null) {
+		
+		$keys = array_keys($this->currentJobs);
+		
         switch($signo) {
             case SIGTERM:
                 echo 'Платформа получила сигнал SIGTERM, завершение работы...'.PHP_EOL;
-                exec('kill -'.getmypid());
+				//КОСТЫЛЬ
+				exec('killall ffmpeg');
+				exec('killall php');		
+                exit(1);
                 break;
             case SIGKILL:
                 echo 'Платформа получила сигнал SIGKILL, завершение работы...'.PHP_EOL;
-                exec('kill -'.getmypid());
+				//КОСТЫЛЬ
+				exec('killall -s 9 ffmpeg');
+				exec('killall -s 9 php');					
+                exit(1);
                 break;				
             case SIGCHLD:
                 // При получении сигнала от дочернего процесса
