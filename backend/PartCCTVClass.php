@@ -75,11 +75,11 @@ protected function launchJob($id,$source) {
         switch($signo) {
             case SIGTERM:
                 echo 'Платформа получила сигнал SIGTERM, завершение работы...'.PHP_EOL;
-                exit(1);
+                exec('kill -'.getmypid());
                 break;
             case SIGKILL:
                 echo 'Платформа получила сигнал SIGKILL, завершение работы...'.PHP_EOL;
-                exit(1);
+                exec('kill -'.getmypid());
                 break;				
             case SIGCHLD:
                 // При получении сигнала от дочернего процесса
