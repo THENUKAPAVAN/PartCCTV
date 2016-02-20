@@ -1,6 +1,30 @@
+<?php
+$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
+$cam_list = $mysql->query("SELECT * FROM `cam_list`"); 
+
+//ZeroMQ
+$context = new ZMQContext();
+$requester = new ZMQSocket($context, ZMQ::SOCKET_REQ);
+$requester->connect("tcp://127.0.0.1:5555");
+$requester->send("status");
+$status = $requester->recv();
+
+if (isset($_GET['action'])) {
+	switch($_GET['action']) {
+		case 'restart':
+			$requester->send("kill");
+			$reply = $requester->recv();
+			if ($reply == "OK") {
+				echo "<script>if(!alert('Платформа перезапущена!')){window.location='/list.php';}</script>";
+				exit;
+			}
+			break;
+		default:
+	}
+}
+?>
 <html>
 <head>
-
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Latest compiled and minified CSS -->
@@ -23,11 +47,11 @@
 			<span class="icon-bar"></span>
 			<span class="icon-bar"></span>
 			</button>
-			<a class="navbar-brand" href="#"><span>PartCCTV</span></a>
+			<a class="navbar-brand" href="/list.php"><span>PartCCTV</span></a>
 		</div>
 
 		<div class="collapse navbar-collapse" id="navbar-ex-collapse">
-			<ul class="nav navbar-nav navbar-right"><li class="active"><a href="#">Камеры</a></li><li><a href="#">Архив</a></li></ul>
+			<ul class="nav navbar-nav navbar-right"><li class="active"><a href="/list.php">Камеры</a></li><li><a href="/archive.php">Архив</a></li></ul>
 		</div>
 	</div>
 </div>
@@ -44,7 +68,7 @@
 		<div class="row">
 			<div class="col-md-12">
 				<a class="btn btn-lg btn-success">Добавить новую камеру</a>
-				<a class="btn btn-lg btn-danger">Перезагрузка бэкэнда (выполнять при изменении параметров)</a>
+				<a class="btn btn-lg btn-danger" href="/list.php?action=restart">Перезагрузка платформы (выполнять при изменении параметров)</a>
 			</div>
 		</div>
 		<div class="row">
@@ -55,10 +79,13 @@
 	</div>
 	<div class="container">
 		<div class="row">
-			<div class="col-md-12">
+		
+			<?php
+			while ($cam = $cam_list->fetch_assoc()) {
+				echo'			<div class="col-md-12">
 				<div class="panel panel-warning">
 					<div class="panel-heading">
-						<h6 class="panel-title text-warning"><b>6 подъезд, вход</b></h6>
+						<h6 class="panel-title text-warning"><b>'.$cam["title"].'</b></h6>
 					</div>
 					<div class="panel-body">
 						<div class="alert alert-dismissable alert-success">
@@ -70,7 +97,9 @@
 						</div>
 					</div>
 				</div>
-			</div>
+			</div>';
+			}
+			?>
 		</div>
 	</div>
 </div>
