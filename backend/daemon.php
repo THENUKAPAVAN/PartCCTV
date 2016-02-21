@@ -16,6 +16,9 @@ fclose(STDIN);
 fclose(STDOUT);
 fclose(STDERR);
 $STDIN = fopen('/dev/null', 'r');
+//Удаляем старый лог
+unlink($baseDir.'/application.log');
+
 $STDOUT = fopen($baseDir.'/application.log', 'ab');
 $STDERR = fopen('/dev/null', 'r');
 

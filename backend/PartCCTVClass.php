@@ -35,7 +35,6 @@ class PartCCTVClass {
 		while ($row = $camera->fetch_assoc()) {
 		    $this->launchJob($row['id'],$row['source'],'/media/cctv');
 		}
-		
         // Гоняем бесконечный цикл
         while(TRUE) {			
             // Если уже запущено максимальное количество дочерних процессов
@@ -90,6 +89,7 @@ class PartCCTVClass {
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
+            $this->currentJobs[$pid] = 'ZeroMQ';			
         } 
         else { 
             // А этот код выполнится дочерним процессом
@@ -102,10 +102,10 @@ class PartCCTVClass {
 			while (true) {
 				//  Wait for next request from client
 				$request = $responder->recv();
-				printf ("Received request: [%s]\n", $request);
+				printf ("ZMQ request: [%s]\n", $request);
 				switch($request) {
 					case 'status':
-						$status = array('free_space' => disk_total_space($path), 'disk_free_space' => disk_free_space($path), 'path' => $path, array_keys($this->currentJobs), 'e' => 5);
+						$status = array('total_space' => round(disk_total_space($path)/1073741824), 'free_space' => round(disk_free_space($path)/1073741824), 'path' => $path);
 						$responder->send(json_encode($status));
 						break;						
 					case 'kill':
@@ -123,23 +123,23 @@ class PartCCTVClass {
 	
     public function childSignalHandler($signo, $pid = null, $status = null) {
 		
-		$keys = array_keys($this->currentJobs);
-		
         switch($signo) {
             case SIGTERM:
-                echo 'Платформа получила сигнал SIGTERM, завершение работы...'.PHP_EOL;
-				//КОСТЫЛЬ
-				exec('killall ffmpeg');
-				exec('killall php');		
+                echo 'Платформа получила сигнал SIGTERM, завершение работы...'.PHP_EOL;	
+				exec('killall ffmpeg');					
+				foreach( $this->currentJobs as $key => $value ) {
+					exec('kill '.$key);
+				}				
                 exit(1);
                 break;
             case SIGKILL:
                 echo 'Платформа получила сигнал SIGKILL, завершение работы...'.PHP_EOL;
-				//КОСТЫЛЬ
-				exec('killall -s 9 ffmpeg');
-				exec('killall -s 9 php');					
+				exec('killall ffmpeg');		
+				foreach( $this->currentJobs as $key => $value ) {
+					exec('kill -s 9 '.$key);
+				}				
                 exit(1);
-                break;				
+                break;			
             case SIGCHLD:
                 // При получении сигнала от дочернего процесса
                 if (!$pid) {

@@ -7,7 +7,7 @@ $context = new ZMQContext();
 $requester = new ZMQSocket($context, ZMQ::SOCKET_REQ);
 $requester->connect("tcp://127.0.0.1:5555");
 $requester->send("status");
-$status = $requester->recv();
+$status = json_decode($requester->recv(), true);
 
 if (isset($_GET['action'])) {
 	switch($_GET['action']) {
@@ -51,7 +51,7 @@ if (isset($_GET['action'])) {
 		</div>
 
 		<div class="collapse navbar-collapse" id="navbar-ex-collapse">
-			<ul class="nav navbar-nav navbar-right"><li class="active"><a href="/list.php">Камеры</a></li><li><a href="/archive.php">Архив</a></li></ul>
+			<ul class="nav navbar-nav navbar-right"><li class="active"><a href="/list.php">Камеры</a></li><li><a href="/archive/">Архив</a></li></ul>
 		</div>
 	</div>
 </div>
@@ -61,14 +61,15 @@ if (isset($_GET['action'])) {
 		<div class="row">
 			<div class="col-md-12">
 				<div class="progress progress-striped">
-					<div class="progress-bar progress-bar-success" role="progressbar" style="width: 60%;">На /sda1 занято 60Гб из 240Гб</div>
+					<div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" style="width: <?=(100-$status['free_space']/$status['total_space']*100)?>%;">На <?=$status['path']?> свободно <?=$status['free_space']?>Гб из <?=$status['total_space']?>Гб</div>
 				</div>
 			</div>
 		</div>
 		<div class="row">
 			<div class="col-md-12">
-				<a class="btn btn-lg btn-success">Добавить новую камеру</a>
-				<a class="btn btn-lg btn-danger" href="/list.php?action=restart">Перезагрузка платформы (выполнять при изменении параметров)</a>
+				<a class="btn btn-lg btn-success" data-toggle="modal" data-target="#newcam">Добавить новую камеру</a>
+				<a class="btn btn-lg btn-danger" href="/list.php?action=restart">Перезагрузка платформы</a>			
+				<a class="btn btn-lg btn-info" data-toggle="modal" data-target="#settings">Настройки платформы</a>					
 			</div>
 		</div>
 		<div class="row">
@@ -85,15 +86,15 @@ if (isset($_GET['action'])) {
 				echo'			<div class="col-md-12">
 				<div class="panel panel-warning">
 					<div class="panel-heading">
-						<h6 class="panel-title text-warning"><b>'.$cam["title"].'</b></h6>
+						<h6 class="panel-title text-warning"><b>'.$cam["title"].' (id'.$cam["id"].')</b></h6>
 					</div>
 					<div class="panel-body">
 						<div class="alert alert-dismissable alert-success">
 							<b>Ошибок не обнаружено...</b>
 						</div>
 						<div class="btn-group btn-group-lg">
-							<a href="#" class="btn btn-warning">Настройки</a>
-							<a href="#" class="btn btn-danger">Удалить</a>
+							<a data-toggle="modal" data-target="#cam_settings" class="btn btn-warning">Настройки</a>
+							<a href="/archive/id'.$cam["id"].'" class="btn btn-primary">Архив</a>
 						</div>
 					</div>
 				</div>
@@ -103,5 +104,91 @@ if (isset($_GET['action'])) {
 		</div>
 	</div>
 </div>
+
+<!-- New Cam Modal -->
+<div class="modal fade" id="newcam" tabindex="-1" role="dialog" aria-labelledby="newcam">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="newcam">Новая камера</h4>
+      </div>
+      <div class="modal-body">
+		<form action="" method="post">
+		<fieldset>
+         
+            <div class="control-group">
+              <label class="control-label" for="name">Название</label>
+              <div class="controls">
+                <input type="text" id="name" name="name" required class="form-control input-lg">
+              </div>
+            </div>
+		
+            <div class="control-group">
+              <label class="control-label" for="source">Источник</label>
+              <div class="controls">
+                <input type="text" id="source" name="source" required class="form-control input-lg">
+              </div>
+            </div>
+		    <br>
+			<input class="btn btn-primary" type="submit" value="Сохранить">
+		</fieldset>
+		</form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Добавить</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Settings Modal -->
+<div class="modal fade" id="cam_settings" tabindex="-1" role="dialog" aria-labelledby="cam_settings">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="cam_settings">Настройки камеры</h4>
+      </div>
+      <div class="modal-body">
+		<form action="" method="post">
+		<fieldset>
+            <div class="control-group">
+              <label class="control-label" for="id">ID</label>
+              <div class="controls">
+                <input type="text" id="id" name="id" required class="form-control input-lg">
+              </div>
+            </div>
+         
+            <div class="control-group">
+              <label class="control-label" for="name">Название</label>
+              <div class="controls">
+                <input type="text" id="name" name="name" required class="form-control input-lg">
+              </div>
+            </div>
+		
+            <div class="control-group">
+              <label class="control-label" for="source">Источник</label>
+              <div class="controls">
+                <input type="text" id="source" name="source" required class="form-control input-lg">
+              </div>
+            </div>
+		
+			<div class="checkbox">
+				<label>
+				<input type="checkbox"> Камера включена
+				</label>
+			</div>
+		
+			<input class="btn btn-primary" type="submit" value="Сохранить">
+		</fieldset>
+		</form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
