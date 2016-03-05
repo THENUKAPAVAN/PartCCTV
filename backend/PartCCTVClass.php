@@ -1,5 +1,8 @@
 <?php
-//бОльшая часть кода оттуда: http://habrahabr.ru/post/134620/
+//------
+//PartCCTVClass.php
+//Демонизация оттуда: http://habrahabr.ru/post/134620/
+//------
 
 // Без этой директивы PHP не будет перехватывать сигналы
 declare(ticks=1); 
@@ -20,27 +23,37 @@ class PartCCTVClass {
 
     public function run() {
         echo "Запуск платформы PartCCTV...".PHP_EOL;
-		$this->Classpid = getmypid();
-		
+		$this->Classpid = getmypid();	
 		$mysql = mysqli_connect('localhost', 'root', 'cctv', 'cctv');
+		if (!$mysql) {
+			die('Ошибка подключения к серверу баз данных.');
+		}	
+
 		$maxProcesses = mysqli_num_rows(mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'"));
 		echo "Максимум процессов: $maxProcesses".PHP_EOL;
 		$camera = mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'");
-		$params = mysqli_fetch_assoc(mysqli_query($mysql, "SELECT * FROM `cam_settings`"));
+		$params_raw = mysqli_query($mysql, "SELECT * FROM `cam_settings`");
+		$params = array();	
+		while ($row = $params_raw->fetch_assoc()) {
+			$params[$row['param']] = $row['value'];
+		}
+		unset($params_raw);
+		
 		mysqli_close($mysql);
 		
-		$this->launchZeroMQ('/media/cctv');		
+		//Запускаем сервер ZeroMQ
+		$this->launchZeroMQ($params['path']);		
 		
 		//Для каждой камеры запускаем свой дочерний процесс			
 		while ($row = $camera->fetch_assoc()) {
-		    $this->launchJob($row['id'],$row['source'],'/media/cctv');
+		    $this->launchJob($row['id'],$row['source'],$params['path']);
 		}
         // Гоняем бесконечный цикл
         while(TRUE) {			
             // Если уже запущено максимальное количество дочерних процессов
             while(count($this->currentJobs) >= $maxProcesses) {
 				//Чистим старые записи				 
-			    exec("find /media/cctv -type f -mtime +2 -delete > /dev/null &");
+			    exec('find '.$params["path"].' -type f -mtime +'.$params["TTL"].' -delete > /dev/null &');
                 sleep(600);
             }
 			echo "Аварийная перезагрузка платформы: дочерних процессов меньше, чем было".PHP_EOL;
