@@ -120,6 +120,10 @@ class PartCCTVClass {
 					case 'status':
 						$status = array('total_space' => round(disk_total_space($path)/1073741824), 'free_space' => round(disk_free_space($path)/1073741824), 'path' => $path);
 						$responder->send(json_encode($status));
+						break;
+					case 'log':
+						$log = file_get_contents('application.log');;
+						$responder->send($log);
 						break;						
 					case 'kill':
 						$responder->send("OK");   

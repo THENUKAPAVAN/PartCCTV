@@ -1,13 +1,11 @@
 <?php
+//MySQL
 $mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
-$cam_list = $mysql->query("SELECT * FROM `cam_list`"); 
 
 //ZeroMQ
 $context = new ZMQContext();
 $requester = new ZMQSocket($context, ZMQ::SOCKET_REQ);
 $requester->connect("tcp://127.0.0.1:5555");
-$requester->send("status");
-$status = json_decode($requester->recv(), true);
 
 if (isset($_GET['action'])) {
 	switch($_GET['action']) {
@@ -22,19 +20,30 @@ if (isset($_GET['action'])) {
 		default:
 	}
 }
+
+$cam_list = $mysql->query("SELECT * FROM `cam_list`"); 
+$settings = $mysql->query("SELECT * FROM `cam_list`"); 
+
+//STATUS
+$requester->send("status");
+$status = json_decode($requester->recv(), true);
+//LOG
+$requester->send("log");
+$log = $requester->recv();
+
 ?>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PartCCTV</title>
 <!-- Latest compiled and minified CSS -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+<link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 <!-- Optional theme -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+<link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
 <script src="https://yandex.st/jquery/1.12.0/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
-
+<script src="https://yastatic.net/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -69,7 +78,8 @@ if (isset($_GET['action'])) {
 			<div class="col-md-12">
 				<a class="btn btn-lg btn-success" data-toggle="modal" data-target="#newcam">Добавить новую камеру</a>
 				<a class="btn btn-lg btn-danger" href="/list.php?action=restart">Перезагрузка платформы</a>			
-				<a class="btn btn-lg btn-info" data-toggle="modal" data-target="#settings">Настройки платформы</a>					
+				<a class="btn btn-lg btn-info" data-toggle="modal" data-target="#settings">Настройки платформы</a>
+				<a class="btn btn-lg btn-default" data-toggle="modal" data-target="#log">Лог</a>						
 			</div>
 		</div>
 		<div class="row">
@@ -141,7 +151,8 @@ if (isset($_GET['action'])) {
     </div>
   </div>
 </div>
-<!-- Settings Modal -->
+
+<!-- Camera Settings Modal -->
 <div class="modal fade" id="cam_settings" tabindex="-1" role="dialog" aria-labelledby="cam_settings">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
@@ -185,6 +196,73 @@ if (isset($_GET['action'])) {
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal fade" id="settings" tabindex="-1" role="dialog" aria-labelledby="settings">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="settings">Настройки платформы</h4>
+      </div>
+      <div class="modal-body">
+		<form action="" method="post">
+		<fieldset>
+            <div class="control-group">
+              <label class="control-label" for="id">ID</label>
+              <div class="controls">
+                <input type="text" id="id" name="id" required class="form-control input-lg">
+              </div>
+            </div>
+         
+            <div class="control-group">
+              <label class="control-label" for="name">Название</label>
+              <div class="controls">
+                <input type="text" id="name" name="name" required class="form-control input-lg">
+              </div>
+            </div>
+		
+            <div class="control-group">
+              <label class="control-label" for="source">Источник</label>
+              <div class="controls">
+                <input type="text" id="source" name="source" required class="form-control input-lg">
+              </div>
+            </div>
+		
+			<div class="checkbox">
+				<label>
+				<input type="checkbox"> Камера включена
+				</label>
+			</div>
+		
+			<input class="btn btn-primary" type="submit" value="Сохранить">
+		</fieldset>
+		</form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Log Modal -->
+<div class="modal fade" id="log" tabindex="-1" role="dialog" aria-labelledby="log">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="log">Лог</h4>
+      </div>
+      <div class="modal-body">
+		<pre><?=$log?></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
       </div>
     </div>
   </div>
