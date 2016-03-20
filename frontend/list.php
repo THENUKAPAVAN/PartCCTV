@@ -1,10 +1,30 @@
 <?php
+//------
+//list.php
+//(c) mironoff
+//------
+
+$exceptions = array();
 //MySQL
-$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
+mysqli_report(MYSQLI_REPORT_STRICT);
+//----------------------------
+//ВНИМАНИЕ!!!!!!! 
+//Поменять настройки подключения к БД
+//----------------------------
+try {
+	$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
+} catch (Exception $e) {
+	$exceptions['MySQL'] = $e->getMessage();
+}	
+//----------------------------
+//ВНИМАНИЕ!!!!!!! 
+//Поменять настройки подключения к БД
+//----------------------------
 
 //ZeroMQ
 $context = new ZMQContext();
 $requester = new ZMQSocket($context, ZMQ::SOCKET_REQ);
+$requester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 500);
 $requester->connect("tcp://127.0.0.1:5555");
 
 if (isset($_GET['action'])) {
@@ -21,16 +41,25 @@ if (isset($_GET['action'])) {
 	}
 }
 
-$cam_list = $mysql->query("SELECT * FROM `cam_list`"); 
-$settings = $mysql->query("SELECT * FROM `cam_list`"); 
-
 //STATUS
-$requester->send("status");
+try {
+	$requester->send("status");
+} catch (Exception $e) {
+	$exceptions['ZMQ'] = $e->getMessage();
+}
 $status = json_decode($requester->recv(), true);
 //LOG
-$requester->send("log");
+try {
+	$requester->send("log");
+} catch (Exception $e) {
+	$exceptions['ZMQ'] = $e->getMessage();
+}
 $log = $requester->recv();
 
+if ($mysql) {
+	$cam_list = $mysql->query("SELECT * FROM `cam_list`"); 
+	$settings = $mysql->query("SELECT * FROM `cam_list`"); 
+}	
 ?>
 <html>
 <head>
@@ -86,12 +115,27 @@ $log = $requester->recv();
 			<div class="col-md-12">
 				<hr>
 			</div>
+<?php
+if (isset($exceptions)) {
+	foreach ($exceptions as $key => $value) {
+		echo'			
+			<div class="col-md-12">
+				<div class="alert alert-dismissable alert-danger">
+					<b>Критическая ошибка '.$key.' :</b>
+					<br>
+					'.$value.'
+				</div>
+			</div>		
+		';
+	}
+}
+?>			
 		</div>
 	</div>
 	<div class="container">
 		<div class="row">
 		
-			<?php
+<?php
 			while ($cam = $cam_list->fetch_assoc()) {
 				echo'			<div class="col-md-12">
 				<div class="panel panel-warning">
@@ -110,7 +154,7 @@ $log = $requester->recv();
 				</div>
 			</div>';
 			}
-			?>
+?>
 		</div>
 	</div>
 </div>

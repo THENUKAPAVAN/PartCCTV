@@ -1,8 +1,14 @@
 <?php
+//------
+//daemon.php
+//(c) mironoff
+//------
+
 // Создаем дочерний процесс
 // весь код после pcntl_fork() будет выполняться двумя процессами: родительским и дочерним
 $child_pid = pcntl_fork();
 if ($child_pid) {
+	echo'OK'.PHP_EOL;
     // Выходим из родительского, привязанного к консоли, процесса
     exit();
 }
@@ -16,15 +22,16 @@ fclose(STDIN);
 fclose(STDOUT);
 fclose(STDERR);
 $STDIN = fopen('/dev/null', 'r');
+
 //Удаляем старый лог
-unlink($baseDir.'/application.log');
+//unlink($baseDir.'/application.log');
 
 $STDOUT = fopen($baseDir.'/application.log', 'ab');
 $STDERR = fopen('/dev/null', 'r');
 
 //Поехали!
 
-include 'PartCCTVClass.php';
+require 'PartCCTVClass.php';
 $daemon = new PartCCTVClass();
 $daemon->run();
 ?>

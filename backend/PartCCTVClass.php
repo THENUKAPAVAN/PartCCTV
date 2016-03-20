@@ -1,6 +1,7 @@
 <?php
 //------
 //PartCCTVClass.php
+//(c) mironoff
 //Демонизация оттуда: http://habrahabr.ru/post/134620/
 //------
 
@@ -11,26 +12,41 @@ class PartCCTVClass {
     // Здесь будем хранить запущенные дочерние процессы
     protected $currentJobs = array();
 	protected $Classpid;
+    // Когда установится в TRUE, демон завершит работу
+    public $stop_server;
 
+
+	public function log($message) {
+        $time = @date('[d/M/Y:H:i:s]');
+		echo "$time $message".PHP_EOL;
+    }
+	
     public function __construct() {
-		echo "---".PHP_EOL;
-		echo "---".PHP_EOL;
-        echo "Сonstructed PartCCTV daemon controller".PHP_EOL;
+		$this->log('---Сonstructed PartCCTV daemon controller---');
         // Ждем сигналы SIGTERM и SIGCHLD
         pcntl_signal(SIGTERM, array($this, "childSignalHandler"));
         pcntl_signal(SIGCHLD, array($this, "childSignalHandler"));
     }
 
     public function run() {
-        echo "Запуск платформы PartCCTV...".PHP_EOL;
-		$this->Classpid = getmypid();	
+        $this->log('Запуск платформы PartCCTV...');
+		$this->Classpid = getmypid();
+		$this->stop_server = FALSE;
+		//----------------------------
+		//ВНИМАНИЕ!!!!!!! 
+		//Поменять настройки подключения к БД
+		//----------------------------
 		$mysql = mysqli_connect('localhost', 'root', 'cctv', 'cctv');
 		if (!$mysql) {
 			die('Ошибка подключения к серверу баз данных.');
 		}	
-
+		//----------------------------
+		//ВНИМАНИЕ!!!!!!! 
+		//Поменять настройки подключения к БД
+		//----------------------------
+		
 		$maxProcesses = mysqli_num_rows(mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'"));
-		echo "Максимум процессов: $maxProcesses".PHP_EOL;
+		$this->log("Максимум процессов: $maxProcesses");
 		$camera = mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'");
 		$params_raw = mysqli_query($mysql, "SELECT * FROM `cam_settings`");
 		$params = array();	
@@ -49,15 +65,13 @@ class PartCCTVClass {
 		    $this->launchJob($row['id'],$row['source'],$params['path']);
 		}
         // Гоняем бесконечный цикл
-        while(TRUE) {			
+        while (!$this->stop_server) {			
             // Если уже запущено максимальное количество дочерних процессов
-            while(count($this->currentJobs) >= $maxProcesses) {
+            while(count($this->currentJobs) == $maxProcesses) {
 				//Чистим старые записи				 
 			    exec('find '.$params["path"].' -type f -mtime +'.$params["TTL"].' -delete > /dev/null &');
                 sleep(600);
             }
-			echo "Аварийная перезагрузка платформы: дочерних процессов меньше, чем было".PHP_EOL;
-			exec('bash restart.sh '.$this->Classpid.' > /dev/null &');
         } 
     } 
 
@@ -78,13 +92,18 @@ class PartCCTVClass {
         } 
         else { 
             // А этот код выполнится дочерним процессом
-            echo "Запущен процесс с ID ".getmypid().PHP_EOL;
-            echo "Начинаю запись камеры с id ".$id.PHP_EOL;
+            $this->log("Запущен процесс с ID ".getmypid());
+            $this->log("Начинаю запись камеры с id ".$id);
 			exec('mkdir '.$path.'/id'.$id);	
-			while(TRUE) {
-			exec('ffmpeg -i "'.$source.'" -c copy -map 0 -f segment -segment_time 900 -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$path.'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4"');
-			sleep(30);
-			echo "Прервалась запись камеры с id ".$id." ,перезапускаю...".PHP_EOL;
+			while (!$this->stop_server) {
+				exec('ffmpeg -i "'.$source.'" -c copy -map 0 -f segment -segment_time 900 -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$path.'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4"');
+				if ($this->stop_server == true) {
+					$this->log("Завершение записи камеры с id $id");
+					exit;
+				}
+				sleep(10);
+				$this->log("Прервалась запись камеры с id $id ,перезапускаю...");
+				var_dump($this->stop_server);
 			}
         } 
         return TRUE; 
@@ -102,30 +121,40 @@ class PartCCTVClass {
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
-            $this->currentJobs[$pid] = 'ZeroMQ';			
+            return TRUE; 			
         } 
         else { 
             // А этот код выполнится дочерним процессом
-            echo "Запущен ZeroMQ сервер...".PHP_EOL;
             
 			$context = new ZMQContext(1);
 			//  Socket to talk to clients
 			$responder = new ZMQSocket($context, ZMQ::SOCKET_REP);
 			$responder->bind("tcp://127.0.0.1:5555");
-			while (true) {
+			$this->log('Запущен ZeroMQ сервер...');
+			while (!$this->stop_server) {
 				//  Wait for next request from client
+				try {
 				$request = $responder->recv();
-				printf ("ZMQ request: [%s]\n", $request);
+				} catch (ZMQSocketException $e) {
+					if ($e->getCode() == 4) //  4 == EINTR, interrupted system call
+					{			
+						usleep(1); //  Don't just continue, otherwise the ticks function won't be processed, and the signal will be ignored, try it!
+						continue; //  Ignore it, if our signal handler caught the interrupt as well, the $running flag will be set to false, so we'll break out
+					}
+					throw $e; //  It's another exception, don't hide it to the user
+				}
+				$this->log("ZMQ request: [$request]");
 				switch($request) {
 					case 'status':
 						$status = array('total_space' => round(disk_total_space($path)/1073741824), 'free_space' => round(disk_free_space($path)/1073741824), 'path' => $path);
 						$responder->send(json_encode($status));
 						break;
 					case 'log':
-						$log = file_get_contents('application.log');;
+						$log = file_get_contents('application.log');
 						$responder->send($log);
 						break;						
 					case 'kill':
+						// Перезагрузка
 						$responder->send("OK");   
 						exec('bash restart.sh '.$this->Classpid.' > /dev/null &');
 						break;					
@@ -134,6 +163,7 @@ class PartCCTVClass {
 						break;
 				}				
 			}
+			$this->log("Завершение работы ZeroMQ");
         } 
         return TRUE; 
     } 	
@@ -142,20 +172,14 @@ class PartCCTVClass {
 		
         switch($signo) {
             case SIGTERM:
-                echo 'Платформа получила сигнал SIGTERM, завершение работы...'.PHP_EOL;	
-				exec('killall ffmpeg');					
-				foreach( $this->currentJobs as $key => $value ) {
-					exec('kill '.$key);
-				}				
-                exit(1);
+                $this->log('Платформа получила сигнал SIGTERM, завершение работы...');
+				$this->stop_server = TRUE;
+				exec('killall ffmpeg');				
                 break;
             case SIGKILL:
-                echo 'Платформа получила сигнал SIGKILL, завершение работы...'.PHP_EOL;
-				exec('killall ffmpeg');		
-				foreach( $this->currentJobs as $key => $value ) {
-					exec('kill -s 9 '.$key);
-				}				
-                exit(1);
+                $this->log('Платформа получила сигнал SIGKILL, завершение работы...');	
+				$this->stop_server = TRUE;
+				exec('killall ffmpeg');					
                 break;			
             case SIGCHLD:
                 // При получении сигнала от дочернего процесса
