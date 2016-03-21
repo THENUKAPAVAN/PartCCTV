@@ -15,7 +15,6 @@ class PartCCTVClass {
     // Когда установится в TRUE, демон завершит работу
     public $stop_server;
 
-
 	public function log($message) {
         $time = @date('[d/M/Y:H:i:s]');
 		echo "$time $message".PHP_EOL;
@@ -31,31 +30,34 @@ class PartCCTVClass {
     public function run() {
         $this->log('Запуск платформы PartCCTV...');
 		$this->Classpid = getmypid();
-		$this->stop_server = FALSE;
+		//MySQL
+		mysqli_report(MYSQLI_REPORT_STRICT);
 		//----------------------------
 		//ВНИМАНИЕ!!!!!!! 
 		//Поменять настройки подключения к БД
 		//----------------------------
-		$mysql = mysqli_connect('localhost', 'root', 'cctv', 'cctv');
-		if (!$mysql) {
-			die('Ошибка подключения к серверу баз данных.');
+		try {
+			$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
+		} catch (Exception $e) {
+			die($e->getMessage());
 		}	
 		//----------------------------
 		//ВНИМАНИЕ!!!!!!! 
 		//Поменять настройки подключения к БД
 		//----------------------------
-		
-		$maxProcesses = mysqli_num_rows(mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'"));
+		$maxProcesses = $mysql->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'")->num_rows;
+		//$maxProcesses = mysqli_num_rows(mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'"));
 		$this->log("Максимум процессов: $maxProcesses");
-		$camera = mysqli_query($mysql, "SELECT * FROM `cam_list` WHERE `enabled` = '1'");
-		$params_raw = mysqli_query($mysql, "SELECT * FROM `cam_settings`");
+		$camera = $mysql->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'");
+		$params_raw = $mysql->query("SELECT * FROM `cam_settings`");
 		$params = array();	
 		while ($row = $params_raw->fetch_assoc()) {
 			$params[$row['param']] = $row['value'];
 		}
 		unset($params_raw);
+		unset($row);
 		
-		mysqli_close($mysql);
+		$mysql->close();
 		
 		//Запускаем сервер ZeroMQ
 		$this->launchZeroMQ($params['path']);		
@@ -64,14 +66,15 @@ class PartCCTVClass {
 		while ($row = $camera->fetch_assoc()) {
 		    $this->launchJob($row['id'],$row['source'],$params['path']);
 		}
-        // Гоняем бесконечный цикл
-        while (!$this->stop_server) {			
-            // Если уже запущено максимальное количество дочерних процессов
-            while(count($this->currentJobs) == $maxProcesses) {
-				//Чистим старые записи				 
-			    exec('find '.$params["path"].' -type f -mtime +'.$params["TTL"].' -delete > /dev/null &');
-                sleep(600);
-            }
+		unset($row);
+		
+		sleep(1); 
+        // Гоняем бесконечный цикл			
+        // Если уже запущено максимальное количество дочерних процессов
+        while(count($this->currentJobs) == $maxProcesses AND !$this->stop_server) {
+			//Чистим старые записи				 
+			exec('find '.$params["path"].' -type f -mtime +'.$params["TTL"].' -delete > /dev/null &');
+            sleep(900);      	
         } 
     } 
 
@@ -97,13 +100,13 @@ class PartCCTVClass {
 			exec('mkdir '.$path.'/id'.$id);	
 			while (!$this->stop_server) {
 				exec('ffmpeg -i "'.$source.'" -c copy -map 0 -f segment -segment_time 900 -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$path.'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4"');
-				if ($this->stop_server == true) {
+				if ($this->stop_server == TRUE) {
 					$this->log("Завершение записи камеры с id $id");
 					exit;
 				}
+				var_dump($this->stop_server);
 				sleep(10);
 				$this->log("Прервалась запись камеры с id $id ,перезапускаю...");
-				var_dump($this->stop_server);
 			}
         } 
         return TRUE; 
@@ -174,13 +177,9 @@ class PartCCTVClass {
             case SIGTERM:
                 $this->log('Платформа получила сигнал SIGTERM, завершение работы...');
 				$this->stop_server = TRUE;
-				exec('killall ffmpeg');				
-                break;
-            case SIGKILL:
-                $this->log('Платформа получила сигнал SIGKILL, завершение работы...');	
-				$this->stop_server = TRUE;
-				exec('killall ffmpeg');					
-                break;			
+				var_dump($this->stop_server);
+				exec('killall ffmpeg');		
+                break;		
             case SIGCHLD:
                 // При получении сигнала от дочернего процесса
                 if (!$pid) {
