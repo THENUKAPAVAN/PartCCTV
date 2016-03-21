@@ -13,7 +13,7 @@ class PartCCTVClass {
     protected $currentJobs = array();
 	protected $Classpid;
     // Когда установится в TRUE, демон завершит работу
-    public $stop_server;
+    public static $stop_server; 
 
 	public function log($message) {
         $time = @date('[d/M/Y:H:i:s]');
