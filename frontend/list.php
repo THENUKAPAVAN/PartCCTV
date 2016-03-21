@@ -58,7 +58,7 @@ $log = $requester->recv();
 
 if ($mysql) {
 	$cam_list = $mysql->query("SELECT * FROM `cam_list`"); 
-	$settings = $mysql->query("SELECT * FROM `cam_list`"); 
+	$settings = $mysql->query("SELECT * FROM `cam_settings`"); 
 }	
 ?>
 <html>
@@ -128,6 +128,8 @@ if (isset($exceptions)) {
 			</div>		
 		';
 	}
+	unset($key);
+	unset($value);
 }
 ?>			
 		</div>
@@ -154,6 +156,7 @@ if (isset($exceptions)) {
 				</div>
 			</div>';
 			}
+			unset($cam);
 ?>
 		</div>
 	</div>
@@ -239,6 +242,7 @@ if (isset($exceptions)) {
 		</form>
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">Удалить камеру</button>	  
         <button type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
       </div>
     </div>
@@ -256,34 +260,20 @@ if (isset($exceptions)) {
       <div class="modal-body">
 		<form action="" method="post">
 		<fieldset>
-            <div class="control-group">
-              <label class="control-label" for="id">ID</label>
+<?php
+			while ($option = $settings->fetch_assoc()) {
+				echo'            <div class="control-group">
+              <label class="control-label" for="'.$option["param"].'">'.$option["param"].'</label>
               <div class="controls">
-                <input type="text" id="id" name="id" required class="form-control input-lg">
+                <input type="text" id="'.$option["param"].'" name="'.$option["param"].'" value="'.$option["value"].'" required class="form-control input-lg">
               </div>
-            </div>
-         
-            <div class="control-group">
-              <label class="control-label" for="name">Название</label>
-              <div class="controls">
-                <input type="text" id="name" name="name" required class="form-control input-lg">
-              </div>
-            </div>
-		
-            <div class="control-group">
-              <label class="control-label" for="source">Источник</label>
-              <div class="controls">
-                <input type="text" id="source" name="source" required class="form-control input-lg">
-              </div>
-            </div>
-		
-			<div class="checkbox">
-				<label>
-				<input type="checkbox"> Камера включена
-				</label>
-			</div>
-		
+            </div>';
+			}
+			unset($option);
+?>
+			<br>
 			<input class="btn btn-primary" type="submit" value="Сохранить">
+
 		</fieldset>
 		</form>
       </div>
