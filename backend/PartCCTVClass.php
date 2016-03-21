@@ -176,7 +176,7 @@ class PartCCTVClass {
         switch($signo) {
             case SIGTERM:
                 $this->log('Платформа получила сигнал SIGTERM, завершение работы...');
-				$this->stop_server = TRUE;
+				PartCCTVClass::$stop_server = TRUE;
 				var_dump($this->stop_server);
 				exec('killall ffmpeg');		
                 break;		
