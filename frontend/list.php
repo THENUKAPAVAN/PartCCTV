@@ -37,10 +37,57 @@ if (isset($_GET['action'])) {
 				exit;
 			}
 			break;
+			
+		case 'log':
+			//LOG
+			try {
+				$requester->send("log");
+			} catch (Exception $e) {
+				echo($e->getMessage());
+				exit;
+			}
+			$log = $requester->recv();
+			echo($log);
+			exit;
+			break;	
+			
+		case 'cam_settings':
+			if(!isset($_GET['id'])) {
+				echo'ID is required!';
+				exit;
+			}
+			$cam = $mysql->query("SELECT * FROM `cam_list` WHERE id='".$_GET['id']."'")->fetch_assoc();
+			header('Content-Type: application/json');
+			echo(json_encode($cam));
+			exit;
+			break;		
+			
 		default:
+			echo'Invalid request!';
+			exit;
+	}
+} else if (isset($_POST['action'])) {
+	switch($_POST['action']) {
+		case 'platform_settings':
+		//TODO
+			$mysql->query("SELECT * FROM `cam_settings`");
+			break;
+			
+		case 'cam_settings':
+		//TODO		
+			$mysql->query("SELECT * FROM `cam_list`");
+			break;	
+			
+		case 'new_cam':
+		//TODO		
+			$mysql->query("SELECT * FROM `cam_list`");
+			break;	
+			
+		default:
+			echo'Invalid request!';
+			exit;	
 	}
 }
-
 //STATUS
 try {
 	$requester->send("status");
@@ -48,16 +95,9 @@ try {
 	$exceptions['ZMQ'] = $e->getMessage();
 }
 $status = json_decode($requester->recv(), true);
-//LOG
-try {
-	$requester->send("log");
-} catch (Exception $e) {
-	$exceptions['ZMQ'] = $e->getMessage();
-}
-$log = $requester->recv();
 
 if ($mysql) {
-	$cam_list = $mysql->query("SELECT * FROM `cam_list`"); 
+	$cam_list = $mysql->query("SELECT `id`,`title` FROM `cam_list`"); 
 	$settings = $mysql->query("SELECT * FROM `cam_settings`"); 
 }	
 ?>
@@ -106,7 +146,7 @@ if ($mysql) {
 		<div class="row">
 			<div class="col-md-12">
 				<a class="btn btn-lg btn-success" data-toggle="modal" data-target="#newcam">Добавить новую камеру</a>
-				<a class="btn btn-lg btn-danger" href="/list.php?action=restart">Перезагрузка платформы</a>			
+				<a class="btn btn-lg btn-danger" href="?action=restart">Перезагрузка платформы</a>			
 				<a class="btn btn-lg btn-info" data-toggle="modal" data-target="#settings">Настройки платформы</a>
 				<a class="btn btn-lg btn-default" data-toggle="modal" data-target="#log">Лог</a>						
 			</div>
@@ -149,7 +189,7 @@ if (isset($exceptions)) {
 							<b>Ошибок не обнаружено...</b>
 						</div>
 						<div class="btn-group btn-group-lg">
-							<a data-toggle="modal" data-target="#cam_settings" class="btn btn-warning">Настройки</a>
+							<a id="'.$cam["id"].'_ajax" data-toggle="modal" data-target="#cam_settings" class="btn btn-warning">Настройки</a>
 							<a href="/archive/id'.$cam["id"].'" class="btn btn-primary">Архив</a>
 						</div>
 					</div>
@@ -293,7 +333,7 @@ if (isset($exceptions)) {
         <h4 class="modal-title" id="log">Лог</h4>
       </div>
       <div class="modal-body">
-		<pre><?=$log?></pre>
+		<pre id="log_ajax"></pre>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
@@ -301,6 +341,27 @@ if (isset($exceptions)) {
     </div>
   </div>
 </div>
+
+<!-- Log Modal -->
+<script>
+$("#log").on("show.bs.modal", function(e) {
+$.ajax({type: "GET", url: "?action=log", 
+    dataType:"text", timeout:30000, async:true,
+    error: function(xhr) {
+        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+    },
+    success: function(a) {
+        document.getElementById("log_ajax").innerHTML=a;
+    }  
+})});
+var reply_click = function()
+{
+    alert("Button clicked, id "+this.id+", text"+this.innerHTML);
+}
+document.getElementById('1_ajax').onclick = reply_click;
+document.getElementById('2').onclick = reply_click;
+document.getElementById('3').onclick = reply_click;
+</script>
 
 </body>
 </html>
