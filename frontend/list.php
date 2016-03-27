@@ -5,6 +5,7 @@
 //------
 
 $exceptions = array();
+
 //MySQL
 mysqli_report(MYSQLI_REPORT_STRICT);
 //----------------------------
@@ -39,7 +40,6 @@ if (isset($_GET['action'])) {
 			break;
 			
 		case 'log':
-			//LOG
 			try {
 				$requester->send("log");
 			} catch (Exception $e) {
@@ -69,8 +69,10 @@ if (isset($_GET['action'])) {
 } else if (isset($_POST['action'])) {
 	switch($_POST['action']) {
 		case 'platform_settings':
-		//TODO
-			$mysql->query("SELECT * FROM `cam_settings`");
+			foreach ($_POST as $key => $value) {
+				if ($key == 'action') continue;
+				$mysql->query("UPDATE `cam_settings` SET `value` = '$value' WHERE `cam_settings`.`param` = '$key'");
+			}
 			break;
 			
 		case 'cam_settings':
@@ -78,9 +80,8 @@ if (isset($_GET['action'])) {
 			$mysql->query("SELECT * FROM `cam_list`");
 			break;	
 			
-		case 'new_cam':
-		//TODO		
-			$mysql->query("SELECT * FROM `cam_list`");
+		case 'new_cam':	
+			$mysql->query("INSERT INTO `cam_list` (`title`, `source`) VALUES ($_POST[name], $_POST[source])");
 			break;	
 			
 		default:
@@ -88,6 +89,7 @@ if (isset($_GET['action'])) {
 			exit;	
 	}
 }
+
 //STATUS
 try {
 	$requester->send("status");
@@ -97,7 +99,7 @@ try {
 $status = json_decode($requester->recv(), true);
 
 if ($mysql) {
-	$cam_list = $mysql->query("SELECT `id`,`title` FROM `cam_list`"); 
+	$cam_list = $mysql->query("SELECT `id`,`title`,`enabled` FROM `cam_list`"); 
 	$settings = $mysql->query("SELECT * FROM `cam_settings`"); 
 }	
 ?>
@@ -179,15 +181,17 @@ if (isset($exceptions)) {
 		
 <?php
 			while ($cam = $cam_list->fetch_assoc()) {
+				if ($cam['enabled'] == 0) {$cam_status = '
+						<div class="alert alert-dismissable alert-danger">
+							<b>Камера отключена!</b>
+				</div>';} else {$cam_status = '';}
 				echo'			<div class="col-md-12">
-				<div class="panel panel-warning">
+				<div class="panel panel-success">
 					<div class="panel-heading">
 						<h6 class="panel-title text-warning"><b>'.$cam["title"].' (id'.$cam["id"].')</b></h6>
 					</div>
-					<div class="panel-body">
-						<div class="alert alert-dismissable alert-success">
-							<b>Ошибок не обнаружено...</b>
-						</div>
+					<div class="panel-body">					
+'.$cam_status.'
 						<div class="btn-group btn-group-lg">
 							<a id="'.$cam["id"].'_ajax" data-toggle="modal" data-target="#cam_settings" class="btn btn-warning">Настройки</a>
 							<a href="/archive/id'.$cam["id"].'" class="btn btn-primary">Архив</a>
@@ -228,12 +232,13 @@ if (isset($exceptions)) {
               </div>
             </div>
 		    <br>
+			<input type="hidden" name="action" value="new_cam">
 			<input class="btn btn-primary" type="submit" value="Сохранить">
 		</fieldset>
 		</form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Добавить</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
       </div>
     </div>
   </div>
@@ -312,6 +317,7 @@ if (isset($exceptions)) {
 			unset($option);
 ?>
 			<br>
+			<input type="hidden" name="action" value="platform_settings">
 			<input class="btn btn-primary" type="submit" value="Сохранить">
 
 		</fieldset>
@@ -354,13 +360,6 @@ $.ajax({type: "GET", url: "?action=log",
         document.getElementById("log_ajax").innerHTML=a;
     }  
 })});
-var reply_click = function()
-{
-    alert("Button clicked, id "+this.id+", text"+this.innerHTML);
-}
-document.getElementById('1_ajax').onclick = reply_click;
-document.getElementById('2').onclick = reply_click;
-document.getElementById('3').onclick = reply_click;
 </script>
 
 </body>
