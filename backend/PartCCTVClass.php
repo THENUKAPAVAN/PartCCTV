@@ -12,7 +12,7 @@ class PartCCTVClass {
     // Здесь будем хранить запущенные дочерние процессы
     protected $currentJobs = array();
 	protected $Classpid;
-
+	
 	public function log($message) {
         $time = @date('[d/M/Y:H:i:s]');
 		echo "$time $message".PHP_EOL;
@@ -27,9 +27,9 @@ class PartCCTVClass {
         pcntl_signal(SIGCHLD, array($this, "childSignalHandler"));
     }
 
-    public function run() {
-        $this->log('Запуск платформы PartCCTV...');	
-		$this->Classpid = getmypid();
+    public function run() {	
+		$this->log('Запуск платформы PartCCTV...');	
+		
 		//MySQL
 		mysqli_report(MYSQLI_REPORT_STRICT);
 		//----------------------------
@@ -45,6 +45,7 @@ class PartCCTVClass {
 		//ВНИМАНИЕ!!!!!!! 
 		//Поменять настройки подключения к БД
 		//----------------------------
+		$this->Classpid = getmypid();	
 		$maxProcesses = ($mysql->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'")->num_rows)+1;
 		$this->log("Максимум процессов: $maxProcesses");
 		$camera = $mysql->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'");
@@ -63,9 +64,10 @@ class PartCCTVClass {
 		
 		//Для каждой камеры запускаем свой дочерний процесс			
 		while ($row = $camera->fetch_assoc()) {
-		    $this->launchJob($row['id'],$row['source'],$params['path']);
+		    $this->launchJob($row['id'],$row['source'],$params['path'],$params['segment_time_min']);
 		}
 		unset($row);
+		unset($camera);
 		
 		sleep(1); 
 		
@@ -74,12 +76,12 @@ class PartCCTVClass {
         while(count($this->currentJobs) == $maxProcesses) {
 			//Чистим старые записи				 
 			exec('find '.$params["path"].' -type f -mtime +'.$params["TTL"].' -delete > /dev/null &');
-            sleep(900);      	
-        } 
+            sleep($params['segment_time_min']*60);      	
+        }
     } 
 
 
-	protected function launchJob($id,$source,$path) { 
+	protected function launchJob($id,$source,$path,$seg_time) { 
         // Создаем дочерний процесс
         // весь код после pcntl_fork() будет выполняться
         // двумя процессами: родительским и дочерним
@@ -99,8 +101,8 @@ class PartCCTVClass {
             $this->log("Начинаю запись камеры с id ".$id);
 			exec('mkdir '.$path.'/id'.$id);	
 			while (TRUE) {
-				exec('ffmpeg -i "'.$source.'" -c copy -map 0 -f segment -segment_time 900 -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$path.'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4"');
-				sleep(30);
+				exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $seg_time*60 .' -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$path.'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4" 1> log_id'.$id.'.txt 2>&1');
+				sleep(10);
 				$this->log("Прервалась запись камеры с id $id ,перезапускаю...");
 			}
         } 
@@ -141,38 +143,40 @@ class PartCCTVClass {
 					}
 					throw $e; //  It's another exception, don't hide it to the user
 				}
+				
 				switch($request) {
 					case 'status':
 						$status = array('total_space' => round(disk_total_space($path)/1073741824), 'free_space' => round(disk_free_space($path)/1073741824), 'path' => $path);
 						$responder->send(json_encode($status));
-						break;
+						unset ($status);
+						break;						
 					case 'log':
-						$log = file_get_contents('application.log');
+						$log = file_get_contents(dirname(__FILE__).'/application.log');
 						$responder->send($log);
+						unset ($log);						
 						break;						
 					case 'kill':
 						// Перезагрузка
-						$responder->send("OK");   
+						$responder->send("OK");  					
 						exec('bash restart.sh '.$this->Classpid.' '.getcwd().' > /dev/null &');
 						break;					
 					default:
 						$responder->send("Invalid request!");
 						break;
-				}				
+				}
 			}
         } 
         return TRUE; 
     } 	
 	
     public function childSignalHandler($signo, $pid = null, $status = null) {
-		
         switch($signo) {
             case SIGTERM:
 				//КОСТЫЛИ
 				exec('killall ffmpeg');					
 				foreach( $this->currentJobs as $key => $value ) {
 					exec('kill '.$key);
-				}				
+				}		
                 exit(1);	
                 break;		
             case SIGCHLD:

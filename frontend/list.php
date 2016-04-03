@@ -36,6 +36,9 @@ if (isset($_GET['action'])) {
 			if ($reply == "OK") {
 				echo "<script>if(!alert('Платформа перезапущена!')){window.location='/list.php';}</script>";
 				exit;
+			} else {
+				echo $reply;
+				exit;
 			}
 			break;
 			
@@ -77,7 +80,7 @@ if (isset($_GET['action'])) {
 			
 		case 'cam_settings':
 		//TODO		
-			$mysql->query("SELECT * FROM `cam_list`");
+			/* $mysql->query("SELECT * FROM `cam_list`"); */
 			break;	
 			
 		case 'new_cam':	
@@ -93,7 +96,7 @@ if (isset($_GET['action'])) {
 //STATUS
 try {
 	$requester->send("status");
-} catch (Exception $e) {
+} catch (ZMQException $e) {
 	$exceptions['ZMQ'] = $e->getMessage();
 }
 $status = json_decode($requester->recv(), true);
@@ -113,7 +116,7 @@ if ($mysql) {
 <!-- Optional theme -->
 <link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
-<script src="https://yandex.st/jquery/1.12.0/jquery.min.js"></script>
+<script src="https://yandex.st/jquery/2.2.0/jquery.min.js"></script>
 <script src="https://yastatic.net/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 </head>
 <body>
