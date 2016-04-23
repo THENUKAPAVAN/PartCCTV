@@ -109,14 +109,10 @@ class PartCCTVCore {
             $this->log("Запущен процесс с ID ".getmypid());
             $this->log("Начинаю запись камеры с id ".$id);
 			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);	
-			while (TRUE) {
-				exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4" 1> log_id'.$id.'.txt 2>&1');
-				sleep(10);
-				$this->log("Прервалась запись камеры с id $id ,перезапускаю...");
-			}
-        } 
-        return TRUE; 
-    } 
+			exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4" 1> log_id'.$id.'.txt 2>&1');
+			return TRUE; 
+		}
+	}
 		
     public function SignalHandler($signo, $pid = null, $status = null) {
         switch($signo) {
