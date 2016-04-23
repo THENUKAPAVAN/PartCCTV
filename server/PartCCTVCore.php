@@ -8,20 +8,23 @@
 declare(ticks=1); 
 
 class PartCCTVCore {
-    protected $currentJobs = array();
-	protected $Classpid;
+    protected $WorkerPIDs = array();
+	protected $CorePID;
+	protected $BaseDir;
+	protected $CamSettings = array();
+	protected $CoreSettings = array();
 	
 	public function log($message) {
         $time = @date('[d/M/Y:H:i:s]');
 		echo "$time $message".PHP_EOL;
     }
 	
-    public function __construct() {
-		$this->log('---                                      ---');		
-		$this->log('---Сonstructed PartCCTV daemon controller---');
-		$this->log('---                                      ---');			
-        pcntl_signal(SIGTERM, array($this, "childSignalHandler"));
-        pcntl_signal(SIGCHLD, array($this, "childSignalHandler"));
+    public function __construct() {	
+        pcntl_signal(SIGTERM, array($this, "SignalHandler"));
+        pcntl_signal(SIGCHLD, array($this, "SignalHandler"));
+
+		$this->CorePID = getmypid();
+		$this->BaseDir = dirname(__FILE__);		
 		
 		function Autoloader($Class) {
 			$ArrayClass = explode('\\', $Class);
@@ -30,13 +33,13 @@ class PartCCTVCore {
 			PartCCTVCore::log('Инициализация '.$ClassType.' '.$ClassName);
 			switch ($ClassType) {
 				case 'Module':
-					$path = dirname(__FILE__).'/modules/';
+					$path = dirname(__FILE__) .'/modules/';
 					break;
 				case 'Lib':
-					$path = dirname(__FILE__).'/libraries/';
+					$path = dirname(__FILE__) .'/libraries/';
 					break;	
 				case 'Core':
-					$path = dirname(__FILE__).'/core/';
+					$path = dirname(__FILE__) .'/core/';
 					break;	
 				default: 
 			}				
@@ -44,52 +47,50 @@ class PartCCTVCore {
 		}
 		
 		spl_autoload_register('Autoloader');
+		
+		$this->log('---                                      ---');		
+		$this->log('---Сonstructed PartCCTV daemon controller---');
+		$this->log('---                                      ---');	
     }
 
     public function run() {	
 
 		$this->log('Запуск платформы PartCCTV...');	
-		
 		$MySQLi = new PartCCTV\Module\MySQLi\createCon;
 		$MySQLi->connect();
 		
-		$this->Classpid = getmypid();	
-		$maxProcesses = ($MySQLi->myconn->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'")->num_rows)+1;
-		$this->log("Максимум процессов: $maxProcesses");
-		$camera = $MySQLi->myconn->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'");
-		$params_raw = $MySQLi->myconn->query("SELECT * FROM `cam_settings`");
-		$params = array();	
-		while ($row = $params_raw->fetch_assoc()) {
-			$params[$row['param']] = $row['value'];
+		$CoreSettings_raw = $MySQLi->myconn->query("SELECT * FROM `cam_settings`");
+		while ($row = $CoreSettings_raw->fetch_assoc()) {
+			$this->CoreSettings[$row['param']] = $row['value'];
 		}
-		unset($params_raw);
+		unset($CoreSettings_raw);
 		unset($row);
+		
+		$CamSettings_raw = $MySQLi->myconn->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'");
 		
 		$MySQLi->close();
 		
-		//Запускаем сервер ZeroMQ
-		$this->launchZeroMQ($params['path']);		
+		//ZeroMQ
+		$ZeroMQ = new PartCCTV\Module\ZeroMQ\ZeroMQ;
+		$ZeroMQ->launchZeroMQ($this->BaseDir, $this->CorePID, $this->CoreSettings);		
 		
-		//Для каждой камеры запускаем свой дочерний процесс			
-		while ($row = $camera->fetch_assoc()) {
-		    $this->launchJob($row['id'],$row['source'],$params['path'],$params['segment_time_min']);
+		//Для каждой камеры запускаем свой рабочий процесс			
+		while ($row = $CamSettings_raw->fetch_assoc()) {
+		    $this->CamWorker($row['id'],$row['source']);
 		}
 		unset($row);
-		unset($camera);
-		
-		sleep(1); 
+		unset($CamSettings_raw);
 		
         // Гоняем бесконечный цикл			
-        // Если уже запущено максимальное количество дочерних процессов
-        while(count($this->currentJobs) == $maxProcesses) {
+        while(TRUE) {
 			//Чистим старые записи				 
-			exec('find '.$params["path"].' -type f -mtime +'.$params["TTL"].' -delete > /dev/null &');
-            sleep($params['segment_time_min']*60);      	
+			exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');
+            sleep($this->CoreSettings['segment_time_min']*60);      	
         }
     } 
 
 
-	protected function launchJob($id,$source,$path,$seg_time) { 
+	protected function CamWorker($id,$source) { 
         // Создаем дочерний процесс
         // весь код после pcntl_fork() будет выполняться
         // двумя процессами: родительским и дочерним
@@ -101,88 +102,28 @@ class PartCCTVCore {
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
-            $this->currentJobs[$pid] = TRUE;
+            $this->WorkerPIDs[$pid] = TRUE;
         } 
         else { 
             // А этот код выполнится дочерним процессом
             $this->log("Запущен процесс с ID ".getmypid());
             $this->log("Начинаю запись камеры с id ".$id);
-			exec('mkdir '.$path.'/id'.$id);	
+			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);	
 			while (TRUE) {
-				exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $seg_time*60 .' -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$path.'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4" 1> log_id'.$id.'.txt 2>&1');
+				exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4" 1> log_id'.$id.'.txt 2>&1');
 				sleep(10);
 				$this->log("Прервалась запись камеры с id $id ,перезапускаю...");
 			}
         } 
         return TRUE; 
     } 
-	
-	protected function launchZeroMQ($path) { 
-        // Создаем дочерний процесс
-        // весь код после pcntl_fork() будет выполняться
-        // двумя процессами: родительским и дочерним
-        $pid = pcntl_fork();
-        if ($pid == -1) {
-            // Не удалось создать дочерний процесс
-            error_log('Не удалось запустить ZeroMQ сервер!!!');
-            return FALSE;
-        } 
-        elseif ($pid) {
-            // Этот код выполнится родительским процессом
-            $this->currentJobs[$pid] = 'ZMQ';			
-        } 
-        else { 
-            // А этот код выполнится дочерним процессом
-            
-			$context = new ZMQContext(1);
-			//  Socket to talk to clients
-			$responder = new ZMQSocket($context, ZMQ::SOCKET_REP);
-			$responder->bind("tcp://127.0.0.1:5555");
-			$this->log('Запущен ZeroMQ сервер...');
-			while (TRUE) {
-				//  Wait for next request from client
-				try {
-				$request = $responder->recv();
-				} catch (ZMQSocketException $e) {
-					if ($e->getCode() == 4) //  4 == EINTR, interrupted system call
-					{			
-						usleep(1); //  Don't just continue, otherwise the ticks function won't be processed, and the signal will be ignored, try it!
-						continue; //  Ignore it, if our signal handler caught the interrupt as well, the $running flag will be set to false, so we'll break out
-					}
-					throw $e; //  It's another exception, don't hide it to the user
-				}
-				
-				switch($request) {
-					case 'status':
-						$status = array('total_space' => round(disk_total_space($path)/1073741824), 'free_space' => round(disk_free_space($path)/1073741824), 'path' => $path);
-						$responder->send(json_encode($status));
-						unset ($status);
-						break;						
-					case 'log':
-						$log = file_get_contents(dirname(__FILE__).'/application.log');
-						$responder->send($log);
-						unset ($log);						
-						break;						
-					case 'kill':
-						// Перезагрузка
-						$responder->send("OK");  					
-						exec('bash restart.sh '.$this->Classpid.' '.getcwd().' > /dev/null &');
-						break;					
-					default:
-						$responder->send("Invalid request!");
-						break;
-				}
-			}
-        } 
-        return TRUE; 
-    } 	
-	
-    public function childSignalHandler($signo, $pid = null, $status = null) {
+		
+    public function SignalHandler($signo, $pid = null, $status = null) {
         switch($signo) {
             case SIGTERM:
 				//КОСТЫЛИ
 				exec('killall ffmpeg');					
-				foreach( $this->currentJobs as $key => $value ) {
+				foreach( $this->WorkerPIDs as $key => $value ) {
 					exec('kill '.$key);
 				}		
                 exit(1);	
@@ -194,9 +135,9 @@ class PartCCTVCore {
                 } 
                 // Пока есть завершенные дочерние процессы
                 while ($pid > 0) {
-                    if ($pid && isset($this->currentJobs[$pid])) {
+                    if ($pid && isset($this->WorkerPIDs[$pid])) {
                         // Удаляем дочерние процессы из списка
-                        unset($this->currentJobs[$pid]);
+                        unset($this->WorkerPIDs[$pid]);
                     } 
                     $pid = pcntl_waitpid(-1, $status, WNOHANG);
                 } 
