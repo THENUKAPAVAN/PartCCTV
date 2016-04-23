@@ -1,15 +1,13 @@
 <?php
-//------
-//PartCCTVClass.php
-//(c) mironoff
-//Демонизация оттуда: http://habrahabr.ru/post/134620/
-//------
+// ------
+// PartCCTVCore.php
+// (C) m1ron0xFF
+// ------
 
 // Без этой директивы PHP не будет перехватывать сигналы
 declare(ticks=1); 
 
-class PartCCTVClass {
-    // Здесь будем хранить запущенные дочерние процессы
+class PartCCTVCore {
     protected $currentJobs = array();
 	protected $Classpid;
 	
@@ -22,34 +20,44 @@ class PartCCTVClass {
 		$this->log('---                                      ---');		
 		$this->log('---Сonstructed PartCCTV daemon controller---');
 		$this->log('---                                      ---');			
-        // Ждем сигналы SIGTERM и SIGCHLD
         pcntl_signal(SIGTERM, array($this, "childSignalHandler"));
         pcntl_signal(SIGCHLD, array($this, "childSignalHandler"));
+		
+		function Autoloader($Class) {
+			$ArrayClass = explode('\\', $Class);
+			$ClassType = $ArrayClass[1];
+			$ClassName = $ArrayClass[2];
+			PartCCTVCore::log('Инициализация '.$ClassType.' '.$ClassName);
+			switch ($ClassType) {
+				case 'Module':
+					$path = dirname(__FILE__).'/modules/';
+					break;
+				case 'Lib':
+					$path = dirname(__FILE__).'/libraries/';
+					break;	
+				case 'Core':
+					$path = dirname(__FILE__).'/core/';
+					break;	
+				default: 
+			}				
+			require_once $path.$ClassName.'.php';
+		}
+		
+		spl_autoload_register('Autoloader');
     }
 
     public function run() {	
+
 		$this->log('Запуск платформы PartCCTV...');	
 		
-		//MySQL
-		mysqli_report(MYSQLI_REPORT_STRICT);
-		//----------------------------
-		//ВНИМАНИЕ!!!!!!! 
-		//Поменять настройки подключения к БД
-		//----------------------------
-		try {
-			$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
-		} catch (Exception $e) {
-			die($e->getMessage());
-		}	
-		//----------------------------
-		//ВНИМАНИЕ!!!!!!! 
-		//Поменять настройки подключения к БД
-		//----------------------------
+		$MySQLi = new PartCCTV\Module\MySQLi\createCon;
+		$MySQLi->connect();
+		
 		$this->Classpid = getmypid();	
-		$maxProcesses = ($mysql->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'")->num_rows)+1;
+		$maxProcesses = ($MySQLi->myconn->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'")->num_rows)+1;
 		$this->log("Максимум процессов: $maxProcesses");
-		$camera = $mysql->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'");
-		$params_raw = $mysql->query("SELECT * FROM `cam_settings`");
+		$camera = $MySQLi->myconn->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'");
+		$params_raw = $MySQLi->myconn->query("SELECT * FROM `cam_settings`");
 		$params = array();	
 		while ($row = $params_raw->fetch_assoc()) {
 			$params[$row['param']] = $row['value'];
@@ -57,7 +65,7 @@ class PartCCTVClass {
 		unset($params_raw);
 		unset($row);
 		
-		$mysql->close();
+		$MySQLi->close();
 		
 		//Запускаем сервер ZeroMQ
 		$this->launchZeroMQ($params['path']);		
