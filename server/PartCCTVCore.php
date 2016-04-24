@@ -4,14 +4,10 @@
 // (C) m1ron0xFF
 // ------
 
-// Без этой директивы PHP не будет перехватывать сигналы
-declare(ticks=1); 
-
 class PartCCTVCore {
     protected $WorkerPIDs = array();
 	protected $CorePID;
 	protected $BaseDir;
-	protected $CamSettings = array();
 	protected $CoreSettings = array();
 	
 	public function log($message) {
@@ -81,12 +77,18 @@ class PartCCTVCore {
 		unset($row);
 		unset($CamSettings_raw);
 		
+		$ArchiveCollectionTime = 0;
+		
         // Гоняем бесконечный цикл			
-        while(TRUE) {
-			//Чистим старые записи				 
-			exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');
-            sleep($this->CoreSettings['segment_time_min']*60);      	
-        }
+        while(TRUE) {	
+			//Чистим старые записи
+			if ( (time() - $ArchiveCollectionTime) > $this->CoreSettings['segment_time_min']*60 ) {
+				$ArchiveCollectionTime = time();
+				exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');				
+			}
+			pcntl_signal_dispatch();
+            sleep(1);      	   
+		}
     } 
 
 
