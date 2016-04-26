@@ -65,10 +65,14 @@ class PartCCTVCore {
 		$CamSettings_raw = $MySQLi->myconn->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'");
 		
 		$MySQLi->close();
+		unset($MySQLi);		
 		
 		//ZeroMQ
 		$ZeroMQ = new PartCCTV\Module\ZeroMQ\ZeroMQ;
-		$ZeroMQ->launchZeroMQ($this->BaseDir, $this->CorePID, $this->CoreSettings);		
+		$ZMQ_PID = $ZeroMQ->launchZeroMQ($this->BaseDir, $this->CorePID, $this->CoreSettings);
+		$this->WorkerPIDs[$ZMQ_PID] = 'ZeroMQ';
+ 		unset($ZMQ_PID);
+		unset($ZeroMQ);
 		
 		//Для каждой камеры запускаем свой рабочий процесс			
 		while ($row = $CamSettings_raw->fetch_assoc()) {
@@ -99,27 +103,28 @@ class PartCCTVCore {
         $pid = pcntl_fork();
         if ($pid == -1) {
             // Не удалось создать дочерний процесс
-            error_log('Could not launch new job, exiting');
+            error_log('Could not launch new worker, exiting');
             return FALSE;
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
-            $this->WorkerPIDs[$pid] = TRUE;
+            $this->WorkerPIDs[$pid] = 'id'.$id;
         } 
         else { 
             // А этот код выполнится дочерним процессом
-            $this->log("Запущен процесс с ID ".getmypid());
-            $this->log("Начинаю запись камеры с id ".$id);
+			WHILE(TRUE) {
+            $this->log("Запущен процесс камеры id".$id." с PID ".getmypid());
 			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);	
-			exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mp4 -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mp4" 1> log_id'.$id.'.txt 2>&1');
-			return TRUE; 
+			exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mkv -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mkv" 1> log_id'.$id.'.txt 2>&1');
+            $this->log("Перезапущен процесс камеры id".$id);			
+			}
 		}
 	}
 		
     public function SignalHandler($signo, $pid = null, $status = null) {
         switch($signo) {
             case SIGTERM:
-				//КОСТЫЛИ
+				//Посылаем SIGTERM всем CHILD
 				exec('killall ffmpeg');					
 				foreach( $this->WorkerPIDs as $key => $value ) {
 					exec('kill '.$key);
