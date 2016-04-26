@@ -21,6 +21,25 @@ class PartCCTVCore {
 
 		$this->CorePID = getmypid();
 		$this->BaseDir = dirname(__FILE__);		
+
+/* 		// Monolog
+		use libs\Monolog\Logger;
+		use libs\Monolog\Handler\StreamHandler;
+		use libs\Monolog\Handler\PlivoHandler;
+
+		$StreamHandler = new StreamHandler(__DIR__.'/PartCCTV_debug.log', Logger::DEBUG);
+		$CamHandler = new StreamHandler(__DIR__.'/PartCCTV_Cam_debug.log', Logger::DEBUG);
+		$PlivoHandler = new PlivoHandler($token,$auth_id,$fromPhoneNumber,$toPhoneNumber, Logger::ALERT);
+
+		// Main Log
+		$logger  = new Logger('PartCCTV_PlivoLogger');
+		$logger->pushHandler($StreamHandler);
+		$logger->pushHandler($PlivoHandler);
+
+		// Cams Log
+		$CamLogger = new Logger('PartCCTV_CamLogger');
+		$CamLogger->pushHandler($CamHandler);
+		$CamLogger->pushHandler($PlivoHandler); */
 		
 		function Autoloader($Class) {
 			$ArrayClass = explode('\\', $Class);
