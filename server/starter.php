@@ -4,6 +4,16 @@
 //(c) m1ron0xFF
 //------
 
+require_once $baseDir.'/Core/ExclusiveLock.php';
+//PIDLock_Test
+$lock = new ExclusiveLock( "PartCCTV", "Starter");
+//lock
+if( $lock->lock( ) == FALSE )
+    echo("PID Lock Test Failed!");
+	exit;
+$lock->unlock();
+unset($lock);
+
 // Создаем дочерний процесс
 // весь код после pcntl_fork() будет выполняться двумя процессами: родительским и дочерним
 $child_pid = pcntl_fork();
@@ -21,8 +31,7 @@ fclose(STDIN);
 fclose(STDOUT);
 fclose(STDERR);
 $STDIN = fopen('/dev/null', 'r');
-
-$STDOUT = fopen($baseDir.'/application.log', 'ab');
+$STDOUT = fopen($baseDir.'/debug.log', 'ab');
 $STDERR = fopen('/dev/null', 'r');
 
 //Грузим ядро

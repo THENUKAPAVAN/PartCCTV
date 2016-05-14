@@ -3,9 +3,12 @@
 // PartCCTVCore.php
 // (C) m1ron0xFF
 // ------
+use Libs\Monolog\Logger;
+use Libs\Monolog\Handler\StreamHandler;
+use Libs\Monolog\Handler\PlivoHandler;
 
 class PartCCTVCore {
-    protected $WorkerPIDs = array();
+    protected $Workers = array();
 	protected $CorePID;
 	protected $BaseDir;
 	protected $CoreSettings = array();
@@ -22,11 +25,7 @@ class PartCCTVCore {
 		$this->CorePID = getmypid();
 		$this->BaseDir = dirname(__FILE__);		
 
-/* 		// Monolog
-		use libs\Monolog\Logger;
-		use libs\Monolog\Handler\StreamHandler;
-		use libs\Monolog\Handler\PlivoHandler;
-
+		// Monolog
 		$StreamHandler = new StreamHandler(__DIR__.'/PartCCTV_debug.log', Logger::DEBUG);
 		$CamHandler = new StreamHandler(__DIR__.'/PartCCTV_Cam_debug.log', Logger::DEBUG);
 		$PlivoHandler = new PlivoHandler($token,$auth_id,$fromPhoneNumber,$toPhoneNumber, Logger::ALERT);
@@ -39,7 +38,7 @@ class PartCCTVCore {
 		// Cams Log
 		$CamLogger = new Logger('PartCCTV_CamLogger');
 		$CamLogger->pushHandler($CamHandler);
-		$CamLogger->pushHandler($PlivoHandler); */
+		$CamLogger->pushHandler($PlivoHandler);
 		
 		function Autoloader($Class) {
 			$ArrayClass = explode('\\', $Class);
@@ -48,13 +47,13 @@ class PartCCTVCore {
 			PartCCTVCore::log('Инициализация '.$ClassType.' '.$ClassName);
 			switch ($ClassType) {
 				case 'Module':
-					$path = dirname(__FILE__) .'/modules/';
+					$path = dirname(__FILE__) .'/Modules/';
 					break;
 				case 'Lib':
-					$path = dirname(__FILE__) .'/libraries/';
+					$path = dirname(__FILE__) .'/Libs/';
 					break;	
 				case 'Core':
-					$path = dirname(__FILE__) .'/core/';
+					$path = dirname(__FILE__) .'/Сore/';
 					break;	
 				default: 
 			}				
@@ -86,31 +85,59 @@ class PartCCTVCore {
 		$MySQLi->close();
 		unset($MySQLi);		
 		
-		//ZeroMQ
-		$ZeroMQ = new PartCCTV\Module\ZeroMQ\ZeroMQ;
-		$ZMQ_PID = $ZeroMQ->launchZeroMQ($this->BaseDir, $this->CorePID, $this->CoreSettings);
-		$this->WorkerPIDs[$ZMQ_PID] = 'ZeroMQ';
- 		unset($ZMQ_PID);
-		unset($ZeroMQ);
-		
 		//Для каждой камеры запускаем свой рабочий процесс			
 		while ($row = $CamSettings_raw->fetch_assoc()) {
-		    $this->CamWorker($row['id'],$row['source']);
+			$this->CamWorker($row['id'],$row['source']);
 		}
 		unset($row);
 		unset($CamSettings_raw);
 		
-		$ArchiveCollectionTime = 0;
-		
-        // Гоняем бесконечный цикл			
-        while(TRUE) {	
-			//Чистим старые записи
+		$ArchiveCollectionTime = 0;		
+		$context = new \ZMQContext(1);
+		//  Socket to talk to clients
+		$responder = new \ZMQSocket($context, \ZMQ::SOCKET_REP);
+		$responder->bind("tcp://127.0.0.1:5555");
+		\PartCCTVCore::log('Запущен ZeroMQ сервер...');
+		while (TRUE) {
+			
+			//  Чистим старые записи
 			if ( (time() - $ArchiveCollectionTime) > $this->CoreSettings['segment_time_min']*60 ) {
 				$ArchiveCollectionTime = time();
 				exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');				
 			}
 			pcntl_signal_dispatch();
-            sleep(1);      	   
+            sleep(1); 
+			
+			//  Wait for next request from client
+			try {
+			$request = $responder->recv();
+			} catch (ZMQSocketException $e) {
+				if ($e->getCode() == 4) //  4 == EINTR, interrupted system call
+				{			
+					usleep(1); //  Don't just continue, otherwise the ticks function won't be processed, and the signal will be ignored, try it!
+					continue; //  Ignore it, if our signal handler caught the interrupt as well, the $running flag will be set to false, so we'll break out
+				}
+				throw $e; //  It's another exception, don't hide it to the user
+			}
+			
+			switch($request) {
+				case 'status':
+					$status = array('total_space' => round(disk_total_space($this->CoreSettings['path'])/1073741824), 'free_space' => round(disk_free_space($this->CoreSettings['path'])/1073741824), 'path' => $this->CoreSettings['path']);
+					$responder->send(json_encode($status));
+					unset ($status);
+					break;						
+				case 'log':
+					$log = file_get_contents($this->BaseDir.'/application.log');
+					$responder->send($log);
+					unset ($log);						
+					break;						
+				case 'kill':
+					// Перезагрузка
+					$responder->send("OK");  					
+					exec('bash restart.sh '.$this->CorePID.' '.getcwd().' > /dev/null &');
+					break;					
+				default:
+			}
 		}
     } 
 
@@ -127,7 +154,7 @@ class PartCCTVCore {
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
-            $this->WorkerPIDs[$pid] = 'id'.$id;
+            $this->WorkerPIDs[$id] = $pid;
         } 
         else { 
             // А этот код выполнится дочерним процессом
@@ -135,7 +162,9 @@ class PartCCTVCore {
             $this->log("Запущен процесс камеры id".$id." с PID ".getmypid());
 			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);	
 			exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mkv -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mkv" 1> log_id'.$id.'.txt 2>&1');
-            $this->log("Перезапущен процесс камеры id".$id);			
+            pcntl_signal_dispatch();
+			sleep(5);
+			$this->log("Перезапущен процесс камеры id".$id);			
 			}
 		}
 	}
