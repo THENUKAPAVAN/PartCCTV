@@ -4,15 +4,6 @@
 //(c) m1ron0xFF
 //------
 
-require_once $baseDir.'/Core/ExclusiveLock.php';
-//PIDLock_Test
-$lock = new ExclusiveLock( "PartCCTV", "Starter");
-//lock
-if( $lock->lock( ) == FALSE )
-    echo("PID Lock Test Failed!");
-	exit;
-$lock->unlock();
-unset($lock);
 
 // Создаем дочерний процесс
 // весь код после pcntl_fork() будет выполняться двумя процессами: родительским и дочерним
@@ -25,17 +16,15 @@ if ($child_pid) {
 // Делаем основным процессом дочерний.
 posix_setsid();
 
-$baseDir = dirname(__FILE__);
-ini_set('error_log',$baseDir.'/error.log');
+ini_set('error_log',dirname(__FILE__).'/error.log');
 fclose(STDIN);
 fclose(STDOUT);
 fclose(STDERR);
 $STDIN = fopen('/dev/null', 'r');
-$STDOUT = fopen($baseDir.'/debug.log', 'ab');
+$STDOUT = fopen('/dev/null', 'r');
 $STDERR = fopen('/dev/null', 'r');
 
-//Грузим ядро
 require 'PartCCTVCore.php';
-$PartCCTV = new PartCCTVCore;
-$PartCCTV->run();
+$PartCCTVCore = new PartCCTVCore;
+$PartCCTVCore->run();
 ?>
