@@ -1,24 +1,28 @@
 # PartCCTV, Yet Another CCTV App
 
+## Features
+  - Lightweight
+  - Open Source
+  - Made with love :)  
+
 ## Installation
-Фронтэнд развернуть на web сервере
+T.B.D.
 
-Импортировать cctv.sql в БД
+## About
 
-Настроить подключение к БД в list.php и PartCCTVClass.php
+### Requirements
+  - PHP 7.0 with MySQL and ZeroMQ binding ( http://zeromq.org/bindings:php )
+  - ZeroMQ ( http://zeromq.org/area:download )
+  - MySQL (MariaDB, Percona, etc.) or Postgresql (T.B.D.)
+  - FFmpeg
 
-Бэкэнд запустить из PHP-CLI. 
+### Contributing
+  - Fork it ( https://github.com/mironoff111/PartCCTV/fork )
+  - Create your feature branch (`git checkout -b my-new-feature`)
+  - Commit your changes (`git commit -am 'Add some feature'`)
+  - Push to the branch (`git push origin my-new-feature`)
+  - Create a new Pull Request
 
-Зайти в веб-интерфейс и настроить систему
+### License
 
-## Requirements
-  - PHP 5.6 и выше с расширением ZeroMQ
-  - MySQL
-
-## Contributing
-
-1. Fork it ( https://github.com/mironoff111/PartCCTV/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+PartCCTV is licensed under the CC BY-NC-ND 4.0 License - see the `LICENSE.md` file for details

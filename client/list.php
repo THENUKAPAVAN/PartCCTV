@@ -1,8 +1,9 @@
 <?php
-//------
-//list.php
-//(c) mironoff
-//------
+// ------
+// list.php
+// (c) 2016 m1ron0xFF
+// @license: CC BY-NC-ND 4.0
+// ------
 
 $exceptions = array();
 

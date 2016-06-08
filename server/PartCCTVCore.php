@@ -1,8 +1,10 @@
 <?php
 // ------
 // PartCCTVCore.php
-// (C) m1ron0xFF
+// (c) 2016 m1ron0xFF
+// @license: CC BY-NC-ND 4.0
 // ------
+
 require "../vendor/autoload.php";
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -44,8 +46,16 @@ class PartCCTVCore {
     public function run() {	
 
 		$this->Logger->info('Запуск платформы PartCCTV');
+		$this->Logger->debug('PID ядра: '.$this->CorePID);		
 		
+		// MySQL
 		$MySQLi = new mysqli('localhost', 'root', 'cctv', 'cctv');
+		
+		// Проверяем соединение с БД //
+		if (mysqli_connect_errno()) {
+			$this->Logger->EMERGENCY('Ошибка соединения с БД :'.mysqli_connect_error());
+			exit();
+		}		
 		
 		$CoreSettings_raw = $MySQLi->query("SELECT * FROM cam_settings");
 		while ($row = $CoreSettings_raw->fetch_assoc()) {
@@ -56,6 +66,7 @@ class PartCCTVCore {
 		
 		if (empty($this->CoreSettings['segment_time_min'])) {
 			$this->Logger->EMERGENCY('segment_time_min не может быть равен нулю!!! Аварийное завершение.');
+			exit;
 		}
 		
 		$CamSettings_raw = $MySQLi->query("SELECT id FROM cam_list WHERE enabled = 1");	
@@ -74,7 +85,7 @@ class PartCCTVCore {
 		//  Socket to talk to clients
 		$ZMQResponder = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REP);
 		$ZMQResponder->bind("tcp://*:5555");
-		$this->Logger->debug('Запущен ZeroMQ сервер...');
+		$this->Logger->debug('Запущен ZeroMQ сервер');
 		while (!$this->IF_Shutdown) {
 			
 			//  Чистим старые записи
