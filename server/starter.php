@@ -4,6 +4,7 @@
 //(c) m1ron0xFF
 //------
 
+
 // Создаем дочерний процесс
 // весь код после pcntl_fork() будет выполняться двумя процессами: родительским и дочерним
 $child_pid = pcntl_fork();
@@ -15,18 +16,15 @@ if ($child_pid) {
 // Делаем основным процессом дочерний.
 posix_setsid();
 
-$baseDir = dirname(__FILE__);
-ini_set('error_log',$baseDir.'/error.log');
+ini_set('error_log',dirname(__FILE__).'/error.log');
 fclose(STDIN);
 fclose(STDOUT);
 fclose(STDERR);
 $STDIN = fopen('/dev/null', 'r');
-
-$STDOUT = fopen($baseDir.'/application.log', 'ab');
+$STDOUT = fopen('/dev/null', 'r');
 $STDERR = fopen('/dev/null', 'r');
 
-//Грузим ядро
 require 'PartCCTVCore.php';
-$PartCCTV = new PartCCTVCore;
-$PartCCTV->run();
+$PartCCTVCore = new PartCCTVCore;
+$PartCCTVCore->run();
 ?>

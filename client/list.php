@@ -14,6 +14,7 @@ mysqli_report(MYSQLI_REPORT_STRICT);
 //----------------------------
 try {
 	$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
+	$mysql->set_charset("utf8");
 } catch (Exception $e) {
 	$exceptions['MySQL'] = $e->getMessage();
 }	

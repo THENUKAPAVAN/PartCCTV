@@ -3,139 +3,189 @@
 // PartCCTVCore.php
 // (C) m1ron0xFF
 // ------
+require "../vendor/autoload.php";
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+use Monolog\Handler\PlivoHandler;
 
 class PartCCTVCore {
-    protected $WorkerPIDs = array();
+    protected $IF_Shutdown = 0;
+	protected $IF_Restart_Required = 0;
 	protected $CorePID;
 	protected $BaseDir;
+	protected $WorkerPIDs = array();
 	protected $CoreSettings = array();
-	
-	public function log($message) {
-        $time = @date('[d/M/Y:H:i:s]');
-		echo "$time $message".PHP_EOL;
-    }
+	protected $Logger;
+	protected $CamLogger;
 	
     public function __construct() {	
         pcntl_signal(SIGTERM, array($this, "SignalHandler"));
         pcntl_signal(SIGCHLD, array($this, "SignalHandler"));
-
+		
 		$this->CorePID = getmypid();
 		$this->BaseDir = dirname(__FILE__);		
 
-/* 		// Monolog
-		use libs\Monolog\Logger;
-		use libs\Monolog\Handler\StreamHandler;
-		use libs\Monolog\Handler\PlivoHandler;
-
-		$StreamHandler = new StreamHandler(__DIR__.'/PartCCTV_debug.log', Logger::DEBUG);
-		$CamHandler = new StreamHandler(__DIR__.'/PartCCTV_Cam_debug.log', Logger::DEBUG);
-		$PlivoHandler = new PlivoHandler($token,$auth_id,$fromPhoneNumber,$toPhoneNumber, Logger::ALERT);
+		// Monolog
+		$Handler = new StreamHandler($this->BaseDir.'/PartCCTV.log', Logger::DEBUG);
+		$CamHandler = new StreamHandler($this->BaseDir.'/PartCCTV_CAM.log', Logger::DEBUG);
+		/* $SMSHandler = new PlivoHandler($token,$auth_id,$fromPhoneNumber,$toPhoneNumber, Logger::ALERT); */
 
 		// Main Log
-		$logger  = new Logger('PartCCTV_PlivoLogger');
-		$logger->pushHandler($StreamHandler);
-		$logger->pushHandler($PlivoHandler);
+		$this->Logger  = new Logger('PartCCTV');
+		$this->Logger->pushHandler($Handler);
+		/* $this->Logger->pushHandler($SMSHandler); */
 
 		// Cams Log
-		$CamLogger = new Logger('PartCCTV_CamLogger');
-		$CamLogger->pushHandler($CamHandler);
-		$CamLogger->pushHandler($PlivoHandler); */
-		
-		function Autoloader($Class) {
-			$ArrayClass = explode('\\', $Class);
-			$ClassType = $ArrayClass[1];
-			$ClassName = $ArrayClass[2];
-			PartCCTVCore::log('Инициализация '.$ClassType.' '.$ClassName);
-			switch ($ClassType) {
-				case 'Module':
-					$path = dirname(__FILE__) .'/modules/';
-					break;
-				case 'Lib':
-					$path = dirname(__FILE__) .'/libraries/';
-					break;	
-				case 'Core':
-					$path = dirname(__FILE__) .'/core/';
-					break;	
-				default: 
-			}				
-			require_once $path.$ClassName.'.php';
-		}
-		
-		spl_autoload_register('Autoloader');
-		
-		$this->log('---                                      ---');		
-		$this->log('---Сonstructed PartCCTV daemon controller---');
-		$this->log('---                                      ---');	
+		$this->CamLogger = new Logger('PartCCTV_CAM');
+		$this->CamLogger->pushHandler($CamHandler);
+		/* $this->CamLogger->pushHandler($SMSHandler);	 */		
     }
 
     public function run() {	
 
-		$this->log('Запуск платформы PartCCTV...');	
-		$MySQLi = new PartCCTV\Module\MySQLi\createCon;
-		$MySQLi->connect();
+		$this->Logger->info('Запуск платформы PartCCTV');
 		
-		$CoreSettings_raw = $MySQLi->myconn->query("SELECT * FROM `cam_settings`");
+		$MySQLi = new mysqli('localhost', 'root', 'cctv', 'cctv');
+		
+		$CoreSettings_raw = $MySQLi->query("SELECT * FROM cam_settings");
 		while ($row = $CoreSettings_raw->fetch_assoc()) {
 			$this->CoreSettings[$row['param']] = $row['value'];
 		}
 		unset($CoreSettings_raw);
 		unset($row);
 		
-		$CamSettings_raw = $MySQLi->myconn->query("SELECT * FROM `cam_list` WHERE `enabled` = '1'");
+		if (empty($this->CoreSettings['segment_time_min'])) {
+			$this->Logger->EMERGENCY('segment_time_min не может быть равен нулю!!! Аварийное завершение.');
+		}
 		
-		$MySQLi->close();
-		unset($MySQLi);		
-		
-		//ZeroMQ
-		$ZeroMQ = new PartCCTV\Module\ZeroMQ\ZeroMQ;
-		$ZMQ_PID = $ZeroMQ->launchZeroMQ($this->BaseDir, $this->CorePID, $this->CoreSettings);
-		$this->WorkerPIDs[$ZMQ_PID] = 'ZeroMQ';
- 		unset($ZMQ_PID);
-		unset($ZeroMQ);
+		$CamSettings_raw = $MySQLi->query("SELECT id FROM cam_list WHERE enabled = 1");	
 		
 		//Для каждой камеры запускаем свой рабочий процесс			
 		while ($row = $CamSettings_raw->fetch_assoc()) {
-		    $this->CamWorker($row['id'],$row['source']);
+			$this->CamWorker($row['id']);
 		}
 		unset($row);
 		unset($CamSettings_raw);
 		
-		$ArchiveCollectionTime = 0;
+		$ArchiveCollectionTime = 0;		
 		
-        // Гоняем бесконечный цикл			
-        while(TRUE) {	
-			//Чистим старые записи
+		$ZMQContext = new ZMQContext();
+		
+		//  Socket to talk to clients
+		$ZMQResponder = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REP);
+		$ZMQResponder->bind("tcp://*:5555");
+		$this->Logger->debug('Запущен ZeroMQ сервер...');
+		while (!$this->IF_Shutdown) {
+			
+			//  Чистим старые записи
 			if ( (time() - $ArchiveCollectionTime) > $this->CoreSettings['segment_time_min']*60 ) {
+				$this->Logger->debug('Очистка старых записей');
 				$ArchiveCollectionTime = time();
 				exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');				
 			}
+			
 			pcntl_signal_dispatch();
-            sleep(1);      	   
+            		
+			//  Wait for next request from client
+			$request = $ZMQResponder->recv (ZMQ::MODE_DONTWAIT);
+			if($request) {
+			
+				$this->Logger->debug("Получен ZMQ запрос: ".$request);
+				$request_json = json_decode($request, true);
+				
+				switch($request_json['action']) {
+					
+					case 'worker_info':
+						if(isset($request_json['id'])) {
+							$CamInfo = $MySQLi->prepare("SELECT source FROM cam_list WHERE enabled = 1 AND id = ?");
+							$CamInfo->bind_param("i", $request_json['id']);
+							$CamInfo->execute();
+							$CamInfo->bind_result($source);
+							$CamInfo->fetch();
+							$CamInfo->close();
+							
+							$ZMQResponder->send($source);
+						} else {
+							$ZMQResponder->send('Invalid request: ID is required!');
+						}
+						break;
+						
+					case 'worker_if_shutdown':
+						$ZMQResponder->send($this->IF_Shutdown);
+						break;
+						
+					case 'core_status':
+						$status = array(
+							'total_space' => round(disk_total_space($this->CoreSettings['path'])/1073741824),
+							'free_space' => round(disk_free_space($this->CoreSettings['path'])/1073741824),
+							'path' => $this->CoreSettings['path'],
+							'IF_Restart_Required' => $this->IF_Restart_Required			
+						);
+						$ZMQResponder->send(json_encode($status));
+						unset ($status);
+						break;
+						
+					case 'core_restart_is_required':
+						$this->IF_Restart_Required = 1;
+						break;						
+						
+					case 'core_log':
+						$log = file_get_contents($this->BaseDir.'/PartCCTV.log');
+						$ZMQResponder->send($log);
+						unset ($log);						
+						break;	
+						
+					case 'cam_log':
+						$log = file_get_contents($this->BaseDir.'/PartCCTV_CAM.log');
+						$ZMQResponder->send($log);
+						unset ($log);						
+						break;	
+						
+					default:
+						$ZMQResponder->send('Invalid request!');
+				}
+
+			} else {
+				sleep(1);
+			}	 
 		}
     } 
 
-
-	protected function CamWorker($id,$source) { 
+	protected function CamWorker($id) { 
         // Создаем дочерний процесс
         // весь код после pcntl_fork() будет выполняться
         // двумя процессами: родительским и дочерним
         $pid = pcntl_fork();
         if ($pid == -1) {
             // Не удалось создать дочерний процесс
-            error_log('Could not launch new worker, exiting');
+            $this->Logger->alert('Could not launch new worker, exiting');
             return FALSE;
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
-            $this->WorkerPIDs[$pid] = 'id'.$id;
         } 
         else { 
             // А этот код выполнится дочерним процессом
+			//Получаем информацию о камере
+			$ZMQContext = new ZMQContext();
+			$ZMQRequester = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REQ);
+			$ZMQRequester->connect("tcp://localhost:5555");
+			$ZMQRequester->send(json_encode(array (	'action' => 'worker_info',	'id' => $id	)));
+			$worker_info = $ZMQRequester->recv();
+			$source = $worker_info;
+			$this->CamLogger->info("Запущен процесс камеры id".$id." с PID ".getmypid());
+			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);		
+			
 			WHILE(TRUE) {
-            $this->log("Запущен процесс камеры id".$id." с PID ".getmypid());
-			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);	
-			exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mkv -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mkv" 1> log_id'.$id.'.txt 2>&1');
-            $this->log("Перезапущен процесс камеры id".$id);			
+				exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mkv -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mkv" 1> log_id'.$id.'.txt 2>&1');
+				sleep(1);
+				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
+				if($ZMQRequester->recv() == 1) {
+					$this->CamLogger->info("Завершается процесс камеры id".$id." с PID ".getmypid());
+					exit;
+				} else {
+					$this->CamLogger->warning("Перезапущен процесс камеры id".$id);				
+				}			
 			}
 		}
 	}
@@ -143,12 +193,9 @@ class PartCCTVCore {
     public function SignalHandler($signo, $pid = null, $status = null) {
         switch($signo) {
             case SIGTERM:
-				//Посылаем SIGTERM всем CHILD
-				exec('killall ffmpeg');					
-				foreach( $this->WorkerPIDs as $key => $value ) {
-					exec('kill '.$key);
-				}		
-                exit(1);	
+				$this->IF_Shutdown = 1;
+				sleep(1);
+				exec('killall ffmpeg');	
                 break;		
             case SIGCHLD:
                 // При получении сигнала от дочернего процесса
