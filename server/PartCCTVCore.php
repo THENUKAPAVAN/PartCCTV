@@ -8,7 +8,6 @@
 require "../vendor/autoload.php";
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
-use Monolog\Handler\PlivoHandler;
 
 class PartCCTVCore {
     protected $IF_Shutdown = 0;
@@ -30,22 +29,19 @@ class PartCCTVCore {
 		// Monolog
 		$Handler = new StreamHandler($this->BaseDir.'/PartCCTV.log', Logger::DEBUG);
 		$CamHandler = new StreamHandler($this->BaseDir.'/PartCCTV_CAM.log', Logger::DEBUG);
-		/* $SMSHandler = new PlivoHandler($token,$auth_id,$fromPhoneNumber,$toPhoneNumber, Logger::ALERT); */
 
 		// Main Log
 		$this->Logger  = new Logger('PartCCTV');
 		$this->Logger->pushHandler($Handler);
-		/* $this->Logger->pushHandler($SMSHandler); */
 
 		// Cams Log
 		$this->CamLogger = new Logger('PartCCTV_CAM');
-		$this->CamLogger->pushHandler($CamHandler);
-		/* $this->CamLogger->pushHandler($SMSHandler);	 */		
+		$this->CamLogger->pushHandler($CamHandler);		
     }
 
     public function run() {	
 
-		$this->Logger->info('Запуск платформы PartCCTV');
+		$this->Logger->info('Запуск ядра платформы PartCCTV');
 		$this->Logger->debug('PID ядра: '.$this->CorePID);		
 		
 		// MySQL
@@ -86,7 +82,9 @@ class PartCCTVCore {
 		$ZMQResponder = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REP);
 		$ZMQResponder->bind("tcp://*:5555");
 		$this->Logger->debug('Запущен ZeroMQ сервер');
-		while (!$this->IF_Shutdown) {
+		while (TRUE) {
+			
+			pcntl_signal_dispatch();
 			
 			//  Чистим старые записи
 			if ( (time() - $ArchiveCollectionTime) > $this->CoreSettings['segment_time_min']*60 ) {
@@ -94,10 +92,7 @@ class PartCCTVCore {
 				$ArchiveCollectionTime = time();
 				exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');				
 			}
-			
-			pcntl_signal_dispatch();
             		
-			//  Wait for next request from client
 			$request = $ZMQResponder->recv (ZMQ::MODE_DONTWAIT);
 			if($request) {
 			
@@ -123,14 +118,21 @@ class PartCCTVCore {
 						
 					case 'worker_if_shutdown':
 						$ZMQResponder->send($this->IF_Shutdown);
+						
+						// Считаем все завершенные процессы
+						if($this->IF_Shutdown) {
+							++$shutdowned_workers;
+						}
+						
 						break;
 						
 					case 'core_status':
 						$status = array(
-							'total_space' => round(disk_total_space($this->CoreSettings['path'])/1073741824),
-							'free_space' => round(disk_free_space($this->CoreSettings['path'])/1073741824),
+							'core_pid' => $this->CorePID,
+							'restart_required' => $this->IF_Restart_Required,							
 							'path' => $this->CoreSettings['path'],
-							'IF_Restart_Required' => $this->IF_Restart_Required			
+							'total_space' => round(disk_total_space($this->CoreSettings['path'])/1073741824),
+							'free_space' => round(disk_free_space($this->CoreSettings['path'])/1073741824),							
 						);
 						$ZMQResponder->send(json_encode($status));
 						unset ($status);
@@ -158,7 +160,26 @@ class PartCCTVCore {
 
 			} else {
 				sleep(1);
-			}	 
+			}
+
+			// Завершаем ядро при необходимости
+			if ($this->IF_Shutdown) {
+				
+				// Время начала завершения работы
+				if (!isset($shutdown_time)) {
+					$shutdown_time = time();
+				}
+				
+				//Все дочерние процессы завершены, можно завершаться
+				if ($shutdowned_workers >= count($this->WorkerPIDs)) {
+					$this->Logger->INFO('Завершение работы ядра платформы');
+					exit;
+				} elseif (time() - $shutdown_time > 1*60) {
+					// Хьюстон, у нас проблема, прошло больше минуты, а вырубились не все дочерние процессы
+					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все дочерние процессы завершены!');
+					exec('killall -s 9 php');
+				}
+			}
 		}
     } 
 
@@ -174,6 +195,7 @@ class PartCCTVCore {
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
+			$this->WorkerPIDs[$id] = $pid;
         } 
         else { 
             // А этот код выполнится дочерним процессом
@@ -186,17 +208,47 @@ class PartCCTVCore {
 			$source = $worker_info;
 			$this->CamLogger->info("Запущен процесс камеры id".$id." с PID ".getmypid());
 			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);		
+			$attempts = 0;
+			$time_to_sleep = 1;
+			$time_of_latest_major_fail = time();
 			
 			WHILE(TRUE) {
+
 				exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mkv -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mkv" 1> log_id'.$id.'.txt 2>&1');
-				sleep(1);
+				
+				// А может нам пора выключиться?
 				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
-				if($ZMQRequester->recv() == 1) {
+				if($ZMQRequester->recv()) {
 					$this->CamLogger->info("Завершается процесс камеры id".$id." с PID ".getmypid());
 					exit;
+				} 	
+
+				sleep($time_to_sleep);				
+				
+				// Запись была стабильной больше 15 минут, всё ок
+				if (time() - $time_of_latest_major_fail >= 15*60) {
+					$time_of_latest_major_fail = time();
+					$attempts = 0;
+					$time_to_sleep = 1;
+					$this->CamLogger->NOTICE("Перезапущена запись с камеры id".$id);
 				} else {
-					$this->CamLogger->warning("Перезапущен процесс камеры id".$id);				
-				}			
+					// Хьюстон, у нас проблема
+					
+					// Много спать не к чему
+					if($time_to_sleep >= 600) {
+						$time_to_sleep = 1;
+					} else {
+						$time_to_sleep = $time_to_sleep*5;
+					}
+
+					// 3 неудачи
+					if($attempts > 3) {
+						$this->CamLogger->CRITICAL('Не удалось восстановить запись с камеры id'.$id.' в течение последних 3 попыток!');
+						$attempts = 0;
+					} else {
+						$this->CamLogger->WARNING("Перезапущена запись с камеры id".$id);	
+					}					
+				}								
 			}
 		}
 	}
@@ -204,11 +256,11 @@ class PartCCTVCore {
     public function SignalHandler($signo, $pid = null, $status = null) {
         switch($signo) {
             case SIGTERM:
+				$this->Logger->DEBUG('Получен сигнал SIGTERM, начало завершения работы платформы');
 				$this->IF_Shutdown = 1;
-				sleep(1);
-				exec('killall ffmpeg');	
+				exec('killall ffmpeg');
                 break;		
-            case SIGCHLD:
+/*             case SIGCHLD:
                 // При получении сигнала от дочернего процесса
                 if (!$pid) {
                     $pid = pcntl_waitpid(-1, $status, WNOHANG); 
@@ -221,7 +273,7 @@ class PartCCTVCore {
                     } 
                     $pid = pcntl_waitpid(-1, $status, WNOHANG);
                 } 
-                break;
+                break; */
             default:
                 // все остальные сигналы
         }

@@ -5,6 +5,30 @@
 // @license: CC BY-NC-ND 4.0
 // ------
 
+$errors = array();
+
+if (version_compare(PHP_VERSION, '7.0.0') < 0) {
+    $errors[] = 'Неподерживаемая версия PHP: ' . PHP_VERSION . PHP_EOL;
+}
+
+if (!(extension_loaded('mysql') or extension_loaded('mysqli'))) {
+   $errors[] = 'Отсутствует расширение MySQL' . PHP_EOL;
+}
+
+if (!extension_loaded('zmq')) {
+    $errors[] = 'Отсутствует расширение ZeroMQ ("zmq")' . PHP_EOL;
+}
+
+if (!empty($errors)) {
+    $errors[] = 'Аварийное завершение!' . PHP_EOL;	
+	foreach ($errors as $error) {
+		echo $error;
+	}
+	exit;
+}
+
+unset ($errors);
+
 // Создаем дочерний процесс
 // весь код после pcntl_fork() будет выполняться двумя процессами: родительским и дочерним
 $child_pid = pcntl_fork();
