@@ -74,7 +74,8 @@ class PartCCTVCore {
 		unset($row);
 		unset($CamSettings_raw);
 		
-		$ArchiveCollectionTime = 0;		
+		$ArchiveCollectionTime = 0;	
+		$shutdowned_workers = 0;
 		
 		$ZMQContext = new ZMQContext();
 		
@@ -260,20 +261,23 @@ class PartCCTVCore {
 				$this->IF_Shutdown = 1;
 				exec('killall ffmpeg');
                 break;		
-/*             case SIGCHLD:
-                // При получении сигнала от дочернего процесса
-                if (!$pid) {
-                    $pid = pcntl_waitpid(-1, $status, WNOHANG); 
-                } 
-                // Пока есть завершенные дочерние процессы
-                while ($pid > 0) {
-                    if ($pid && isset($this->WorkerPIDs[$pid])) {
-                        // Удаляем дочерние процессы из списка
-                        unset($this->WorkerPIDs[$pid]);
-                    } 
-                    $pid = pcntl_waitpid(-1, $status, WNOHANG);
-                } 
-                break; */
+            case SIGCHLD:
+// TODO			
+/* 				if(!$this->IF_Shutdown) {
+					// При получении сигнала от дочернего процесса
+					if (!$pid) {
+						$pid = pcntl_waitpid(-1, $status, WNOHANG); 
+					} 
+					// Пока есть завершенные дочерние процессы
+					while ($pid > 0) {
+						if ($pid && isset($this->WorkerPIDs[$pid])) {
+							// Удаляем дочерние процессы из списка
+							unset($this->WorkerPIDs[$pid]);
+						} 
+						$pid = pcntl_waitpid(-1, $status, WNOHANG);
+					} 
+				}	 */
+                break;
             default:
                 // все остальные сигналы
         }
