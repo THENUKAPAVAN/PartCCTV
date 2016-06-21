@@ -5,7 +5,8 @@
 // @license: CC BY-NC-ND 4.0
 // ------
 
-require "../vendor/autoload.php";
+chdir(dirname(__FILE__));
+require '../vendor/autoload.php';
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
@@ -88,76 +89,116 @@ class PartCCTVCore {
 			pcntl_signal_dispatch();
 			
 			//  Чистим старые записи
-			if ( (time() - $ArchiveCollectionTime) > $this->CoreSettings['segment_time_min']*60 ) {
+			if ( (time() - $ArchiveCollectionTime) >= $this->CoreSettings['segment_time_min']*60 ) {
 				$this->Logger->debug('Очистка старых записей');
 				$ArchiveCollectionTime = time();
 				exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');				
 			}
             		
-			$request = $ZMQResponder->recv (ZMQ::MODE_DONTWAIT);
-			if($request) {
+			$ZMQRequest = $ZMQResponder->recv (ZMQ::MODE_DONTWAIT);
 			
-				$this->Logger->debug("Получен ZMQ запрос: ".$request);
-				$request_json = json_decode($request, true);
+			if($ZMQRequest) {
+			
+				$this->Logger->debug("Получен ZMQ запрос: ".$ZMQRequest);
 				
-				switch($request_json['action']) {
-					
-					case 'worker_info':
-						if(isset($request_json['id'])) {
-							$CamInfo = $MySQLi->prepare("SELECT source FROM cam_list WHERE enabled = 1 AND id = ?");
-							$CamInfo->bind_param("i", $request_json['id']);
-							$CamInfo->execute();
-							$CamInfo->bind_result($source);
-							$CamInfo->fetch();
-							$CamInfo->close();
-							
-							$ZMQResponder->send($source);
-						} else {
-							$ZMQResponder->send('Invalid request: ID is required!');
-						}
+				$Parsed_Request = json_decode($ZMQRequest, true);
+				
+				switch (json_last_error()) {
+					case 'Request_Error_NONE':
 						break;
-						
-					case 'worker_if_shutdown':
-						$ZMQResponder->send($this->IF_Shutdown);
-						
-						// Считаем все завершенные процессы
-						if($this->IF_Shutdown) {
-							++$shutdowned_workers;
-						}
-						
+					case 'Request_Error_DEPTH':
+						$Request_Error = 'Достигнута максимальная глубина стека';
 						break;
-						
-					case 'core_status':
-						$status = array(
-							'core_pid' => $this->CorePID,
-							'restart_required' => $this->IF_Restart_Required,							
-							'path' => $this->CoreSettings['path'],
-							'total_space' => round(disk_total_space($this->CoreSettings['path'])/1073741824),
-							'free_space' => round(disk_free_space($this->CoreSettings['path'])/1073741824),							
-						);
-						$ZMQResponder->send(json_encode($status));
-						unset ($status);
+					case 'Request_Error_STATE_MISMATCH':
+						$Request_Error = 'Некорректные разряды или не совпадение режимов';
 						break;
-						
-					case 'core_restart_is_required':
-						$this->IF_Restart_Required = 1;
-						break;						
-						
-					case 'core_log':
-						$log = file_get_contents($this->BaseDir.'/PartCCTV.log');
-						$ZMQResponder->send($log);
-						unset ($log);						
-						break;	
-						
-					case 'cam_log':
-						$log = file_get_contents($this->BaseDir.'/PartCCTV_CAM.log');
-						$ZMQResponder->send($log);
-						unset ($log);						
-						break;	
-						
+					case 'Request_Error_CTRL_CHAR':
+						$Request_Error = 'Некорректный управляющий символ';
+						break;
+					case 'Request_Error_SYNTAX':
+						$Request_Error = 'Синтаксическая ошибка, не корректный JSON';
+						break;
+					case 'Request_Error_UTF8':
+						$Request_Error = 'Некорректные символы UTF-8, возможно неверная кодировка';
+						break;
 					default:
-						$ZMQResponder->send('Invalid request!');
+						$Request_Error = 'Неизвестная ошибка';
+						break;
 				}
+				
+				if(!isset($Request_Error)) {
+					
+					switch($Parsed_Request['action']) {
+						
+						case 'worker_info':
+							if(isset($Parsed_Request['id'])) {
+								$CamInfo = $MySQLi->prepare("SELECT source FROM cam_list WHERE enabled = 1 AND id = ?");
+								$CamInfo->bind_param("i", $Parsed_Request['id']);
+								$CamInfo->execute();
+								$CamInfo->bind_result($source);
+								$CamInfo->fetch();
+								$CamInfo->close();
+								
+								$Response = $source;
+								unset($source);
+							} else {
+								$Request_Error = 'worker_info: ID is required!';
+							}
+							break;
+							
+						case 'worker_if_shutdown':
+							$Response = $this->IF_Shutdown;
+							
+							// Считаем все завершенные процессы
+							if($this->IF_Shutdown) {
+								++$shutdowned_workers;
+							}
+							break;
+							
+						case 'core_status':
+							$status = array(
+								'core_pid' => $this->CorePID,
+								'restart_required' => $this->IF_Restart_Required,							
+								'path' => $this->CoreSettings['path'],
+								'total_space' => round(disk_total_space($this->CoreSettings['path'])/1073741824),
+								'free_space' => round(disk_free_space($this->CoreSettings['path'])/1073741824)					
+							);
+							$Response = json_encode($status);
+							unset ($status);
+							break;
+							
+						case 'core_restart_is_required':
+							$this->IF_Restart_Required = 1;
+							$Response = 'OK';
+							break;						
+							
+						case 'core_log':
+							$Response_Log = file_get_contents($this->BaseDir.'/PartCCTV.log');			
+							break;	
+							
+						case 'cam_log':
+							$Response_Log = file_get_contents($this->BaseDir.'/PartCCTV_CAM.log');		
+							break;	
+							
+						default:
+							$Request_Error = 'Invalid request!';
+							break;							
+					}
+
+				}
+					
+				if(isset($Request_Error)) {
+					$this->Logger->INFO("Ошибка обработки запроса: ".$Request_Error);
+					$ZMQResponder->send($Request_Error);
+					unset($Request_Error);
+				} elseif(isset($Response)) {
+					$this->Logger->DEBUG("Ответ платформы: ".$Response);
+					$ZMQResponder->send($Response);
+					unset($Response);
+				} elseif(isset($Response_Log)) {
+					$ZMQResponder->send($Response_Log);
+					unset($Response_Log);
+				}				
 
 			} else {
 				sleep(1);
@@ -239,7 +280,7 @@ class PartCCTVCore {
 					if($time_to_sleep >= 600) {
 						$time_to_sleep = 1;
 					} else {
-						$time_to_sleep = $time_to_sleep*5;
+						$time_to_sleep = $time_to_sleep*2;
 					}
 
 					// 3 неудачи
@@ -247,6 +288,7 @@ class PartCCTVCore {
 						$this->CamLogger->CRITICAL('Не удалось восстановить запись с камеры id'.$id.' в течение последних 3 попыток!');
 						$attempts = 0;
 					} else {
+						++$attempts;
 						$this->CamLogger->WARNING("Перезапущена запись с камеры id".$id);	
 					}					
 				}								
@@ -280,6 +322,7 @@ class PartCCTVCore {
                 break;
             default:
                 // все остальные сигналы
+				break;
         }
 	}		
 }
