@@ -1,12 +1,14 @@
 <?php
 // ------
 // PartCCTVCore.php
-// (C) m1ron0xFF
+// (c) 2016 m1ron0xFF
+// @license: CC BY-NC-ND 4.0
 // ------
-require "../vendor/autoload.php";
+
+chdir(dirname(__FILE__));
+require '../vendor/autoload.php';
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
-use Monolog\Handler\PlivoHandler;
 
 class PartCCTVCore {
     protected $IF_Shutdown = 0;
@@ -28,24 +30,29 @@ class PartCCTVCore {
 		// Monolog
 		$Handler = new StreamHandler($this->BaseDir.'/PartCCTV.log', Logger::DEBUG);
 		$CamHandler = new StreamHandler($this->BaseDir.'/PartCCTV_CAM.log', Logger::DEBUG);
-		/* $SMSHandler = new PlivoHandler($token,$auth_id,$fromPhoneNumber,$toPhoneNumber, Logger::ALERT); */
 
 		// Main Log
 		$this->Logger  = new Logger('PartCCTV');
 		$this->Logger->pushHandler($Handler);
-		/* $this->Logger->pushHandler($SMSHandler); */
 
 		// Cams Log
 		$this->CamLogger = new Logger('PartCCTV_CAM');
-		$this->CamLogger->pushHandler($CamHandler);
-		/* $this->CamLogger->pushHandler($SMSHandler);	 */		
+		$this->CamLogger->pushHandler($CamHandler);		
     }
 
     public function run() {	
 
-		$this->Logger->info('Запуск платформы PartCCTV');
+		$this->Logger->info('Запуск ядра платформы PartCCTV');
+		$this->Logger->debug('PID ядра: '.$this->CorePID);		
 		
+		// MySQL
 		$MySQLi = new mysqli('localhost', 'root', 'cctv', 'cctv');
+		
+		// Проверяем соединение с БД //
+		if (mysqli_connect_errno()) {
+			$this->Logger->EMERGENCY('Ошибка соединения с БД :'.mysqli_connect_error());
+			exit();
+		}		
 		
 		$CoreSettings_raw = $MySQLi->query("SELECT * FROM cam_settings");
 		while ($row = $CoreSettings_raw->fetch_assoc()) {
@@ -56,6 +63,7 @@ class PartCCTVCore {
 		
 		if (empty($this->CoreSettings['segment_time_min'])) {
 			$this->Logger->EMERGENCY('segment_time_min не может быть равен нулю!!! Аварийное завершение.');
+			exit;
 		}
 		
 		$CamSettings_raw = $MySQLi->query("SELECT id FROM cam_list WHERE enabled = 1");	
@@ -67,87 +75,153 @@ class PartCCTVCore {
 		unset($row);
 		unset($CamSettings_raw);
 		
-		$ArchiveCollectionTime = 0;		
+		$ArchiveCollectionTime = 0;	
+		$shutdowned_workers = 0;
 		
 		$ZMQContext = new ZMQContext();
 		
 		//  Socket to talk to clients
 		$ZMQResponder = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REP);
 		$ZMQResponder->bind("tcp://*:5555");
-		$this->Logger->debug('Запущен ZeroMQ сервер...');
-		while (!$this->IF_Shutdown) {
+		$this->Logger->debug('Запущен ZeroMQ сервер');
+		while (TRUE) {
+			
+			pcntl_signal_dispatch();
 			
 			//  Чистим старые записи
-			if ( (time() - $ArchiveCollectionTime) > $this->CoreSettings['segment_time_min']*60 ) {
+			if ( (time() - $ArchiveCollectionTime) >= $this->CoreSettings['segment_time_min']*60 ) {
 				$this->Logger->debug('Очистка старых записей');
 				$ArchiveCollectionTime = time();
 				exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');				
 			}
-			
-			pcntl_signal_dispatch();
             		
-			//  Wait for next request from client
-			$request = $ZMQResponder->recv (ZMQ::MODE_DONTWAIT);
-			if($request) {
+			$ZMQRequest = $ZMQResponder->recv (ZMQ::MODE_DONTWAIT);
 			
-				$this->Logger->debug("Получен ZMQ запрос: ".$request);
-				$request_json = json_decode($request, true);
+			if($ZMQRequest) {
+			
+				$this->Logger->debug("Получен ZMQ запрос: ".$ZMQRequest);
 				
-				switch($request_json['action']) {
-					
-					case 'worker_info':
-						if(isset($request_json['id'])) {
-							$CamInfo = $MySQLi->prepare("SELECT source FROM cam_list WHERE enabled = 1 AND id = ?");
-							$CamInfo->bind_param("i", $request_json['id']);
-							$CamInfo->execute();
-							$CamInfo->bind_result($source);
-							$CamInfo->fetch();
-							$CamInfo->close();
-							
-							$ZMQResponder->send($source);
-						} else {
-							$ZMQResponder->send('Invalid request: ID is required!');
-						}
+				$Parsed_Request = json_decode($ZMQRequest, true);
+				
+				switch (json_last_error()) {
+					case 'Request_Error_NONE':
 						break;
-						
-					case 'worker_if_shutdown':
-						$ZMQResponder->send($this->IF_Shutdown);
+					case 'Request_Error_DEPTH':
+						$Request_Error = 'Достигнута максимальная глубина стека';
 						break;
-						
-					case 'core_status':
-						$status = array(
-							'total_space' => round(disk_total_space($this->CoreSettings['path'])/1073741824),
-							'free_space' => round(disk_free_space($this->CoreSettings['path'])/1073741824),
-							'path' => $this->CoreSettings['path'],
-							'IF_Restart_Required' => $this->IF_Restart_Required			
-						);
-						$ZMQResponder->send(json_encode($status));
-						unset ($status);
+					case 'Request_Error_STATE_MISMATCH':
+						$Request_Error = 'Некорректные разряды или не совпадение режимов';
 						break;
-						
-					case 'core_restart_is_required':
-						$this->IF_Restart_Required = 1;
-						break;						
-						
-					case 'core_log':
-						$log = file_get_contents($this->BaseDir.'/PartCCTV.log');
-						$ZMQResponder->send($log);
-						unset ($log);						
-						break;	
-						
-					case 'cam_log':
-						$log = file_get_contents($this->BaseDir.'/PartCCTV_CAM.log');
-						$ZMQResponder->send($log);
-						unset ($log);						
-						break;	
-						
+					case 'Request_Error_CTRL_CHAR':
+						$Request_Error = 'Некорректный управляющий символ';
+						break;
+					case 'Request_Error_SYNTAX':
+						$Request_Error = 'Синтаксическая ошибка, не корректный JSON';
+						break;
+					case 'Request_Error_UTF8':
+						$Request_Error = 'Некорректные символы UTF-8, возможно неверная кодировка';
+						break;
 					default:
-						$ZMQResponder->send('Invalid request!');
+						$Request_Error = 'Неизвестная ошибка';
+						break;
 				}
+				
+				if(!isset($Request_Error)) {
+					
+					switch($Parsed_Request['action']) {
+						
+						case 'worker_info':
+							if(isset($Parsed_Request['id'])) {
+								$CamInfo = $MySQLi->prepare("SELECT source FROM cam_list WHERE enabled = 1 AND id = ?");
+								$CamInfo->bind_param("i", $Parsed_Request['id']);
+								$CamInfo->execute();
+								$CamInfo->bind_result($source);
+								$CamInfo->fetch();
+								$CamInfo->close();
+								
+								$Response = $source;
+								unset($source);
+							} else {
+								$Request_Error = 'worker_info: ID is required!';
+							}
+							break;
+							
+						case 'worker_if_shutdown':
+							$Response = $this->IF_Shutdown;
+							
+							// Считаем все завершенные процессы
+							if($this->IF_Shutdown) {
+								++$shutdowned_workers;
+							}
+							break;
+							
+						case 'core_status':
+							$status = array(
+								'core_pid' => $this->CorePID,
+								'restart_required' => $this->IF_Restart_Required,							
+								'path' => $this->CoreSettings['path'],
+								'total_space' => round(disk_total_space($this->CoreSettings['path'])/1073741824),
+								'free_space' => round(disk_free_space($this->CoreSettings['path'])/1073741824)					
+							);
+							$Response = json_encode($status);
+							unset ($status);
+							break;
+							
+						case 'core_restart_is_required':
+							$this->IF_Restart_Required = 1;
+							$Response = 'OK';
+							break;						
+							
+						case 'core_log':
+							$Response_Log = file_get_contents($this->BaseDir.'/PartCCTV.log');			
+							break;	
+							
+						case 'cam_log':
+							$Response_Log = file_get_contents($this->BaseDir.'/PartCCTV_CAM.log');		
+							break;	
+							
+						default:
+							$Request_Error = 'Invalid request!';
+							break;							
+					}
+
+				}
+					
+				if(isset($Request_Error)) {
+					$this->Logger->INFO("Ошибка обработки запроса: ".$Request_Error);
+					$ZMQResponder->send($Request_Error);
+					unset($Request_Error);
+				} elseif(isset($Response)) {
+					$this->Logger->DEBUG("Ответ платформы: ".$Response);
+					$ZMQResponder->send($Response);
+					unset($Response);
+				} elseif(isset($Response_Log)) {
+					$ZMQResponder->send($Response_Log);
+					unset($Response_Log);
+				}				
 
 			} else {
 				sleep(1);
-			}	 
+			}
+
+			// Завершаем ядро при необходимости
+			if ($this->IF_Shutdown) {
+				
+				// Время начала завершения работы
+				if (!isset($shutdown_time)) {
+					$shutdown_time = time();
+				}
+				
+				//Все дочерние процессы завершены, можно завершаться
+				if ($shutdowned_workers >= count($this->WorkerPIDs)) {
+					$this->Logger->INFO('Завершение работы ядра платформы');
+					exit;
+				} elseif (time() - $shutdown_time > 1*60) {
+					// Хьюстон, у нас проблема, прошло больше минуты, а вырубились не все дочерние процессы
+					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все дочерние процессы завершены!');
+					exec('killall -s 9 php');
+				}
+			}
 		}
     } 
 
@@ -163,6 +237,7 @@ class PartCCTVCore {
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
+			$this->WorkerPIDs[$id] = $pid;
         } 
         else { 
             // А этот код выполнится дочерним процессом
@@ -175,17 +250,48 @@ class PartCCTVCore {
 			$source = $worker_info;
 			$this->CamLogger->info("Запущен процесс камеры id".$id." с PID ".getmypid());
 			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);		
+			$attempts = 0;
+			$time_to_sleep = 1;
+			$time_of_latest_major_fail = time();
 			
 			WHILE(TRUE) {
+
 				exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mkv -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mkv" 1> log_id'.$id.'.txt 2>&1');
-				sleep(1);
+				
+				// А может нам пора выключиться?
 				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
-				if($ZMQRequester->recv() == 1) {
+				if($ZMQRequester->recv()) {
 					$this->CamLogger->info("Завершается процесс камеры id".$id." с PID ".getmypid());
 					exit;
+				} 	
+
+				sleep($time_to_sleep);				
+				
+				// Запись была стабильной больше 15 минут, всё ок
+				if (time() - $time_of_latest_major_fail >= 15*60) {
+					$time_of_latest_major_fail = time();
+					$attempts = 0;
+					$time_to_sleep = 1;
+					$this->CamLogger->NOTICE("Перезапущена запись с камеры id".$id);
 				} else {
-					$this->CamLogger->warning("Перезапущен процесс камеры id".$id);				
-				}			
+					// Хьюстон, у нас проблема
+					
+					// Много спать не к чему
+					if($time_to_sleep >= 600) {
+						$time_to_sleep = 1;
+					} else {
+						$time_to_sleep = $time_to_sleep*2;
+					}
+
+					// 3 неудачи
+					if($attempts > 3) {
+						$this->CamLogger->CRITICAL('Не удалось восстановить запись с камеры id'.$id.' в течение последних 3 попыток!');
+						$attempts = 0;
+					} else {
+						++$attempts;
+						$this->CamLogger->WARNING("Перезапущена запись с камеры id".$id);	
+					}					
+				}								
 			}
 		}
 	}
@@ -193,26 +299,30 @@ class PartCCTVCore {
     public function SignalHandler($signo, $pid = null, $status = null) {
         switch($signo) {
             case SIGTERM:
+				$this->Logger->DEBUG('Получен сигнал SIGTERM, начало завершения работы платформы');
 				$this->IF_Shutdown = 1;
-				sleep(1);
-				exec('killall ffmpeg');	
+				exec('killall ffmpeg');
                 break;		
             case SIGCHLD:
-                // При получении сигнала от дочернего процесса
-                if (!$pid) {
-                    $pid = pcntl_waitpid(-1, $status, WNOHANG); 
-                } 
-                // Пока есть завершенные дочерние процессы
-                while ($pid > 0) {
-                    if ($pid && isset($this->WorkerPIDs[$pid])) {
-                        // Удаляем дочерние процессы из списка
-                        unset($this->WorkerPIDs[$pid]);
-                    } 
-                    $pid = pcntl_waitpid(-1, $status, WNOHANG);
-                } 
+// TODO			
+/* 				if(!$this->IF_Shutdown) {
+					// При получении сигнала от дочернего процесса
+					if (!$pid) {
+						$pid = pcntl_waitpid(-1, $status, WNOHANG); 
+					} 
+					// Пока есть завершенные дочерние процессы
+					while ($pid > 0) {
+						if ($pid && isset($this->WorkerPIDs[$pid])) {
+							// Удаляем дочерние процессы из списка
+							unset($this->WorkerPIDs[$pid]);
+						} 
+						$pid = pcntl_waitpid(-1, $status, WNOHANG);
+					} 
+				}	 */
                 break;
             default:
                 // все остальные сигналы
+				break;
         }
 	}		
 }

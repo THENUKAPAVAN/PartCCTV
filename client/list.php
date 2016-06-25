@@ -1,39 +1,41 @@
 <?php
-//------
-//list.php
-//(c) mironoff
-//------
+// ------
+// list.php
+// (c) 2016 m1ron0xFF
+// @license: CC BY-NC-ND 4.0
+// ------
 
-$exceptions = array();
+$errors = array();
 
-//MySQL
-mysqli_report(MYSQLI_REPORT_STRICT);
-//----------------------------
-//ВНИМАНИЕ!!!!!!! 
-//Поменять настройки подключения к БД
-//----------------------------
-try {
-	$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
-	$mysql->set_charset("utf8");
-} catch (Exception $e) {
-	$exceptions['MySQL'] = $e->getMessage();
+// MySQL
+// ----------------------------
+// ВНИМАНИЕ!!!!!!! 
+// Поменять настройки подключения к БД
+// ----------------------------
+$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
+// ----------------------------
+// ВНИМАНИЕ!!!!!!! 
+// Поменять настройки подключения к БД
+// ----------------------------
+	
+if (mysqli_connect_errno()) {
+	$errors['ZMQ'] = mysqli_connect_error();
 }	
-//----------------------------
-//ВНИМАНИЕ!!!!!!! 
-//Поменять настройки подключения к БД
-//----------------------------
 
-//ZeroMQ
-$context = new ZMQContext();
-$requester = new ZMQSocket($context, ZMQ::SOCKET_REQ);
-$requester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 500);
-$requester->connect("tcp://127.0.0.1:5555");
+$mysql->set_charset("utf8");
 
-if (isset($_GET['action'])) {
+// ZeroMQ
+$ZMQContext = new ZMQContext();
+$ZMQRequester = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REQ);
+$ZMQRequester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 1250);
+$ZMQRequester->connect("tcp://127.0.0.1:5555");
+
+if(isset($_GET['action'])) {
 	switch($_GET['action']) {
+		
 		case 'restart':
-			$requester->send("kill");
-			$reply = $requester->recv();
+			$ZMQRequester->send("kill");
+			$reply = $ZMQRequester->recv();
 			if ($reply == "OK") {
 				echo "<script>if(!alert('Платформа перезапущена!')){window.location='/list.php';}</script>";
 				exit;
@@ -45,12 +47,12 @@ if (isset($_GET['action'])) {
 			
 		case 'log':
 			try {
-				$requester->send("log");
+				$ZMQRequester->send("log");
 			} catch (Exception $e) {
 				echo($e->getMessage());
 				exit;
 			}
-			$log = $requester->recv();
+			$log = $ZMQRequester->recv();
 			echo($log);
 			exit;
 			break;	
@@ -69,9 +71,11 @@ if (isset($_GET['action'])) {
 		default:
 			echo'Invalid request!';
 			exit;
+			
 	}
-} else if (isset($_POST['action'])) {
+} elseif(isset($_POST['action'])) {
 	switch($_POST['action']) {
+		
 		case 'platform_settings':
 			foreach ($_POST as $key => $value) {
 				if ($key == 'action') continue;
@@ -90,17 +94,19 @@ if (isset($_GET['action'])) {
 			
 		default:
 			echo'Invalid request!';
-			exit;	
+			exit;
+			
 	}
 }
 
 //STATUS
 try {
-	$requester->send("status");
-} catch (ZMQException $e) {
-	$exceptions['ZMQ'] = $e->getMessage();
+	$ZMQRequester->send("status");
+} catch (ZMQException $e) {	
+	$errors['ZMQ'] = $e->getMessage();	
 }
-$status = json_decode($requester->recv(), true);
+
+$status = json_decode($ZMQRequester->recv(), true);
 
 if ($mysql) {
 	$cam_list = $mysql->query("SELECT `id`,`title`,`enabled` FROM `cam_list`"); 
@@ -117,7 +123,7 @@ if ($mysql) {
 <!-- Optional theme -->
 <link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
-<script src="https://yandex.st/jquery/2.2.0/jquery.min.js"></script>
+<script src="https://yastatic.net/jquery/2.2.3/jquery.min.js"></script>
 <script src="https://yastatic.net/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -162,8 +168,8 @@ if ($mysql) {
 				<hr>
 			</div>
 <?php
-if (isset($exceptions)) {
-	foreach ($exceptions as $key => $value) {
+if (isset($errors)) {
+	foreach ($errors as $key => $value) {
 		echo'			
 			<div class="col-md-12">
 				<div class="alert alert-dismissable alert-danger">
