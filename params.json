@@ -1,0 +1,6 @@
+{
+  "name": "PartCCTV",
+  "tagline": "PartCCTV, Yet Another CCTV App",
+  "body": "# PartCCTV, Yet Another CCTV App\r\n\r\n## Features\r\n  - Lightweight\r\n  - Open Source\r\n  - Made with love :)  \r\n\r\n## Installation\r\nT.B.D.\r\n\r\n## About\r\n\r\n### Requirements\r\n  - PHP 7.0 with MySQL and ZeroMQ binding ( http://zeromq.org/bindings:php )\r\n  - ZeroMQ ( http://zeromq.org/area:download )\r\n  - MySQL (MariaDB, Percona, etc.) or Postgresql (T.B.D.)\r\n  - FFmpeg\r\n\r\n### Contributing\r\n  - Fork it ( https://github.com/mironoff111/PartCCTV/fork )\r\n  - Create your feature branch (`git checkout -b my-new-feature`)\r\n  - Commit your changes (`git commit -am 'Add some feature'`)\r\n  - Push to the branch (`git push origin my-new-feature`)\r\n  - Create a new Pull Request\r\n\r\n### License\r\n\r\nPartCCTV is licensed under the CC BY-NC-ND 4.0 License - see the `LICENSE.md` file for details",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
