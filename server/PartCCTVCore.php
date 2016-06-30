@@ -107,22 +107,22 @@ class PartCCTVCore {
 					case 'Request_Error_NONE':
 						break;
 					case 'Request_Error_DEPTH':
-						$Request_Error = 'Достигнута максимальная глубина стека';
+						$Request_Error = 'JSON Parser: Достигнута максимальная глубина стека';
 						break;
 					case 'Request_Error_STATE_MISMATCH':
-						$Request_Error = 'Некорректные разряды или не совпадение режимов';
+						$Request_Error = 'JSON Parser: Некорректные разряды или не совпадение режимов';
 						break;
 					case 'Request_Error_CTRL_CHAR':
-						$Request_Error = 'Некорректный управляющий символ';
+						$Request_Error = 'JSON Parser: Некорректный управляющий символ';
 						break;
 					case 'Request_Error_SYNTAX':
-						$Request_Error = 'Синтаксическая ошибка, не корректный JSON';
+						$Request_Error = 'JSON Parser: Синтаксическая ошибка, не корректный JSON';
 						break;
 					case 'Request_Error_UTF8':
-						$Request_Error = 'Некорректные символы UTF-8, возможно неверная кодировка';
+						$Request_Error = 'JSON Parser: Некорректные символы UTF-8, возможно неверная кодировка';
 						break;
 					default:
-						$Request_Error = 'Неизвестная ошибка';
+						$Request_Error = 'JSON Parser: Неизвестная ошибка';
 						break;
 				}
 				
@@ -149,10 +149,10 @@ class PartCCTVCore {
 						case 'worker_if_shutdown':
 							$Response = $this->IF_Shutdown;
 							
-							// Считаем все завершенные процессы
+ 							/*// Считаем все завершенные процессы
 							if($this->IF_Shutdown) {
 								++$shutdowned_workers;
-							}
+							} */
 							break;
 							
 						case 'core_status':
@@ -167,10 +167,20 @@ class PartCCTVCore {
 							unset ($status);
 							break;
 							
+						case 'core_workerpids':
+							$Response = json_encode($this->WorkerPIDs);
+							unset ($status);
+							break;							
+							
 						case 'core_restart_is_required':
 							$this->IF_Restart_Required = 1;
 							$Response = 'OK';
-							break;						
+							break;					
+
+						case 'core_stop':
+							exec('kill '.$this->CorePID);
+							$Response = 'OK';
+							break;								
 							
 						case 'core_log':
 							$Response_Log = file_get_contents($this->BaseDir.'/PartCCTV.log');			
@@ -181,7 +191,7 @@ class PartCCTVCore {
 							break;	
 							
 						default:
-							$Request_Error = 'Invalid request!';
+							$Request_Error = 'Unknown request!';
 							break;							
 					}
 
@@ -213,12 +223,14 @@ class PartCCTVCore {
 				}
 				
 				//Все дочерние процессы завершены, можно завершаться
-				if ($shutdowned_workers >= count($this->WorkerPIDs)) {
+				
+				if ($this->WorkerPIDs == 0) {				
+/* 				if ($shutdowned_workers >= count($this->WorkerPIDs)) { */
 					$this->Logger->INFO('Завершение работы ядра платформы');
 					exit;
 				} elseif (time() - $shutdown_time > 1*60) {
 					// Хьюстон, у нас проблема, прошло больше минуты, а вырубились не все дочерние процессы
-					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все дочерние процессы завершены!');
+					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все воркеры завершены!');
 					exec('killall -s 9 php');
 				}
 			}
@@ -237,7 +249,7 @@ class PartCCTVCore {
         } 
         elseif ($pid) {
             // Этот код выполнится родительским процессом
-			$this->WorkerPIDs[$id] = $pid;
+			$this->WorkerPIDs[$pid] = $id;
         } 
         else { 
             // А этот код выполнится дочерним процессом
@@ -248,7 +260,7 @@ class PartCCTVCore {
 			$ZMQRequester->send(json_encode(array (	'action' => 'worker_info',	'id' => $id	)));
 			$worker_info = $ZMQRequester->recv();
 			$source = $worker_info;
-			$this->CamLogger->info("Запущен процесс камеры id".$id." с PID ".getmypid());
+			$this->CamLogger->info("Запущен воркер id".$id." с PID ".getmypid());
 			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);		
 			$attempts = 0;
 			$time_to_sleep = 1;
@@ -261,7 +273,7 @@ class PartCCTVCore {
 				// А может нам пора выключиться?
 				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
 				if($ZMQRequester->recv()) {
-					$this->CamLogger->info("Завершается процесс камеры id".$id." с PID ".getmypid());
+					$this->CamLogger->info("Завершается воркер id".$id." с PID ".getmypid());
 					exit;
 				} 	
 
@@ -304,8 +316,7 @@ class PartCCTVCore {
 				exec('killall ffmpeg');
                 break;		
             case SIGCHLD:
-// TODO			
-/* 				if(!$this->IF_Shutdown) {
+				if(!$this->IF_Shutdown) {
 					// При получении сигнала от дочернего процесса
 					if (!$pid) {
 						$pid = pcntl_waitpid(-1, $status, WNOHANG); 
@@ -313,12 +324,13 @@ class PartCCTVCore {
 					// Пока есть завершенные дочерние процессы
 					while ($pid > 0) {
 						if ($pid && isset($this->WorkerPIDs[$pid])) {
+							$this->Logger->DEBUG('Воркер с PID '.$pid.' завершил работу');							
 							// Удаляем дочерние процессы из списка
 							unset($this->WorkerPIDs[$pid]);
 						} 
 						$pid = pcntl_waitpid(-1, $status, WNOHANG);
 					} 
-				}	 */
+				}	
                 break;
             default:
                 // все остальные сигналы

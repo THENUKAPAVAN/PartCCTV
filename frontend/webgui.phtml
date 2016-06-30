@@ -1,11 +1,12 @@
 <?php
 // ------
-// list.php
+// PartCCTV WEB GUI
+// webgui.phtml
 // (c) 2016 m1ron0xFF
 // @license: CC BY-NC-ND 4.0
 // ------
 
-$errors = array();
+/* $errors = array();
 
 // MySQL
 // ----------------------------
@@ -85,7 +86,7 @@ if(isset($_GET['action'])) {
 			
 		case 'cam_settings':
 		//TODO		
-			/* $mysql->query("SELECT * FROM `cam_list`"); */
+			$mysql->query("SELECT * FROM `cam_list`");
 			break;	
 			
 		case 'new_cam':	
@@ -111,13 +112,13 @@ $status = json_decode($ZMQRequester->recv(), true);
 if ($mysql) {
 	$cam_list = $mysql->query("SELECT `id`,`title`,`enabled` FROM `cam_list`"); 
 	$settings = $mysql->query("SELECT * FROM `cam_settings`"); 
-}	
+}	 */
 ?>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PartCCTV</title>
+<title>PartCCTV WEB GUI</title>
 <!-- Latest compiled and minified CSS -->
 <link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 <!-- Optional theme -->
@@ -137,11 +138,16 @@ if ($mysql) {
 			<span class="icon-bar"></span>
 			<span class="icon-bar"></span>
 			</button>
-			<a class="navbar-brand" href="/list.php"><span>PartCCTV</span></a>
+			<a class="navbar-brand" href="/list.php"><span>PartCCTV WEB GUI</span></a>
 		</div>
 
 		<div class="collapse navbar-collapse" id="navbar-ex-collapse">
-			<ul class="nav navbar-nav navbar-right"><li class="active"><a href="/list.php">Камеры</a></li><li><a href="/archive/">Архив</a></li></ul>
+			<ul class="nav navbar-nav navbar-right">
+				<li class="active"><a href="/list.php">Камеры</a></li>
+				<li><a href="/archive/">Архив</a></li>
+				<li><a href="#">Документация</a></li>
+				<li><a href="#">Выход</a></li>					
+			</ul>
 		</div>
 	</div>
 </div>
@@ -158,9 +164,15 @@ if ($mysql) {
 		<div class="row">
 			<div class="col-md-12">
 				<a class="btn btn-lg btn-success" data-toggle="modal" data-target="#newcam">Добавить новую камеру</a>
-				<a class="btn btn-lg btn-danger" href="?action=restart">Перезагрузка платформы</a>			
-				<a class="btn btn-lg btn-info" data-toggle="modal" data-target="#settings">Настройки платформы</a>
-				<a class="btn btn-lg btn-default" data-toggle="modal" data-target="#log">Лог</a>						
+				<a class="btn btn-lg btn-info"    data-toggle="modal" data-target="#settings">Настройки платформы</a>
+				<a class="btn btn-lg btn-info"    data-toggle="modal" data-target="#cam_log">Пользователи</a>					
+				<a class="btn btn-lg btn-default" data-toggle="modal" data-target="#core_log">Лог платформы</a>
+				<a class="btn btn-lg btn-default" data-toggle="modal" data-target="#cam_log">Лог камер</a>			
+				
+				<a class="btn btn-lg btn-warning" >Частичная перезагрузка платформы</a>				
+				<a class="btn btn-lg btn-danger"  >Полная перезагрузка платформы</a>			
+
+				
 			</div>
 		</div>
 		<div class="row">
@@ -168,7 +180,7 @@ if ($mysql) {
 				<hr>
 			</div>
 <?php
-if (isset($errors)) {
+/* if (isset($errors)) {
 	foreach ($errors as $key => $value) {
 		echo'			
 			<div class="col-md-12">
@@ -182,7 +194,7 @@ if (isset($errors)) {
 	}
 	unset($key);
 	unset($value);
-}
+} */
 ?>			
 		</div>
 	</div>
@@ -190,7 +202,7 @@ if (isset($errors)) {
 		<div class="row">
 		
 <?php
-			while ($cam = $cam_list->fetch_assoc()) {
+/* 			while ($cam = $cam_list->fetch_assoc()) {
 				if ($cam['enabled'] == 0) {$cam_status = '
 						<div class="alert alert-dismissable alert-danger">
 							<b>Камера отключена!</b>
@@ -210,7 +222,7 @@ if (isset($errors)) {
 				</div>
 			</div>';
 			}
-			unset($cam);
+			unset($cam); */
 ?>
 		</div>
 	</div>
@@ -316,7 +328,7 @@ if (isset($errors)) {
 		<form action="" method="post">
 		<fieldset>
 <?php
-			while ($option = $settings->fetch_assoc()) {
+/* 			while ($option = $settings->fetch_assoc()) {
 				echo'            <div class="control-group">
               <label class="control-label" for="'.$option["param"].'">'.$option["param"].'</label>
               <div class="controls">
@@ -324,7 +336,7 @@ if (isset($errors)) {
               </div>
             </div>';
 			}
-			unset($option);
+			unset($option); */
 ?>
 			<br>
 			<input type="hidden" name="action" value="platform_settings">
@@ -340,16 +352,16 @@ if (isset($errors)) {
   </div>
 </div>
 
-<!-- Log Modal -->
-<div class="modal fade" id="log" tabindex="-1" role="dialog" aria-labelledby="log">
+<!-- Core Log Modal -->
+<div class="modal fade" id="core_log" tabindex="-1" role="dialog" aria-labelledby="core_log">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title" id="log">Лог</h4>
+        <h4 class="modal-title" id="core_log">Лог платформы</h4>
       </div>
       <div class="modal-body">
-		<pre id="log_ajax"></pre>
+		<pre id="core_log_ajax"></pre>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
@@ -358,16 +370,48 @@ if (isset($errors)) {
   </div>
 </div>
 
-<!-- Log Modal -->
+<!-- Camera Log Modal -->
+<div class="modal fade" id="cam_log" tabindex="-1" role="dialog" aria-labelledby="cam_log">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="cam_log">Лог камер</h4>
+      </div>
+      <div class="modal-body">
+		<pre id="cam_log_ajax"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Core Log Modal -->
 <script>
-$("#log").on("show.bs.modal", function(e) {
-$.ajax({type: "GET", url: "?action=log", 
+$("#core_log").on("show.bs.modal", function(e) {
+$.ajax({type: "GET", url: "/api/1.0/platform/log", 
     dataType:"text", timeout:30000, async:true,
     error: function(xhr) {
         console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
     },
     success: function(a) {
-        document.getElementById("log_ajax").innerHTML=a;
+        document.getElementById("core_log_ajax").innerHTML=a;
+    }  
+})});
+</script>
+
+<!-- Cam Log Modal -->
+<script>
+$("#cam_log").on("show.bs.modal", function(e) {
+$.ajax({type: "GET", url: "/api/1.0/camera/log", 
+    dataType:"text", timeout:30000, async:true,
+    error: function(xhr) {
+        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+    },
+    success: function(a) {
+        document.getElementById("cam_log_ajax").innerHTML=a;
     }  
 })});
 </script>
