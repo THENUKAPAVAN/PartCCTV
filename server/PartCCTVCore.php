@@ -76,7 +76,7 @@ class PartCCTVCore {
 		unset($CamSettings_raw);
 		
 		$ArchiveCollectionTime = 0;	
-		$shutdowned_workers = 0;
+/* 		$shutdowned_workers = 0; */
 		
 		$ZMQContext = new ZMQContext();
 		
@@ -231,7 +231,7 @@ class PartCCTVCore {
 				} elseif (time() - $shutdown_time > 1*60) {
 					// Хьюстон, у нас проблема, прошло больше минуты, а вырубились не все дочерние процессы
 					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все воркеры завершены!');
-					exec('killall -s 9 php');
+					exec('killall -s9 php');
 				}
 			}
 		}
@@ -316,21 +316,23 @@ class PartCCTVCore {
 				exec('killall ffmpeg');
                 break;		
             case SIGCHLD:
-				if(!$this->IF_Shutdown) {
-					// При получении сигнала от дочернего процесса
-					if (!$pid) {
-						$pid = pcntl_waitpid(-1, $status, WNOHANG); 
-					} 
-					// Пока есть завершенные дочерние процессы
-					while ($pid > 0) {
-						if ($pid && isset($this->WorkerPIDs[$pid])) {
-							$this->Logger->DEBUG('Воркер с PID '.$pid.' завершил работу');							
-							// Удаляем дочерние процессы из списка
-							unset($this->WorkerPIDs[$pid]);
-						} 
-						$pid = pcntl_waitpid(-1, $status, WNOHANG);
-					} 
-				}	
+                // При получении сигнала от дочернего процесса
+                if (!$pid) {
+                    $pid = pcntl_waitpid(-1, $status, WNOHANG); 
+                } 
+                // Пока есть завершенные дочерние процессы
+                while ($pid > 0) {
+                    if ($pid && isset($this->WorkerPIDs[$pid])) {
+                        if(!$this->IF_Shutdown) {
+                            $this->Logger->CRITICAL('Воркер с PID '.$pid.' неожиданно завершил работу');							
+                        } else {
+                            $this->Logger->DEBUG('Воркер с PID '.$pid.' завершил работу');                            
+                        }
+                        // Удаляем дочерние процессы из списка
+                        unset($this->WorkerPIDs[$pid]);
+                    } 
+                    $pid = pcntl_waitpid(-1, $status, WNOHANG);
+                } 	
                 break;
             default:
                 // все остальные сигналы
