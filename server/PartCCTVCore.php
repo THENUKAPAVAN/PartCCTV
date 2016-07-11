@@ -76,7 +76,6 @@ class PartCCTVCore {
 		unset($CamSettings_raw);
 		
 		$ArchiveCollectionTime = 0;	
-/* 		$shutdowned_workers = 0; */
 		
 		$ZMQContext = new ZMQContext();
 		
@@ -148,11 +147,6 @@ class PartCCTVCore {
 							
 						case 'worker_if_shutdown':
 							$Response = $this->IF_Shutdown;
-							
- 							/*// Считаем все завершенные процессы
-							if($this->IF_Shutdown) {
-								++$shutdowned_workers;
-							} */
 							break;
 							
 						case 'core_status':
@@ -224,11 +218,10 @@ class PartCCTVCore {
 				
 				//Все дочерние процессы завершены, можно завершаться
 				
-				if ($this->WorkerPIDs == 0) {				
-/* 				if ($shutdowned_workers >= count($this->WorkerPIDs)) { */
+				if (count($this->WorkerPIDs) === 0) {
 					$this->Logger->INFO('Завершение работы ядра платформы');
 					exit;
-				} elseif (time() - $shutdown_time > 1*60) {
+				} elseif (time() - $shutdown_time > 60) {
 					// Хьюстон, у нас проблема, прошло больше минуты, а вырубились не все дочерние процессы
 					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все воркеры завершены!');
 					exec('killall -s9 php');
