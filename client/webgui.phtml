@@ -1,119 +1,9 @@
-<?php
-// ------
+<!-- // ------
 // PartCCTV WEB GUI
 // webgui.phtml
 // (c) 2016 m1ron0xFF
 // @license: CC BY-NC-SA 4.0
-// ------
-
-/* $errors = array();
-
-// MySQL
-// ----------------------------
-// ВНИМАНИЕ!!!!!!! 
-// Поменять настройки подключения к БД
-// ----------------------------
-$mysql = new mysqli('localhost', 'root', 'cctv', 'cctv');
-// ----------------------------
-// ВНИМАНИЕ!!!!!!! 
-// Поменять настройки подключения к БД
-// ----------------------------
-	
-if (mysqli_connect_errno()) {
-	$errors['ZMQ'] = mysqli_connect_error();
-}	
-
-$mysql->set_charset("utf8");
-
-// ZeroMQ
-$ZMQContext = new ZMQContext();
-$ZMQRequester = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REQ);
-$ZMQRequester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 1250);
-$ZMQRequester->connect("tcp://127.0.0.1:5555");
-
-if(isset($_GET['action'])) {
-	switch($_GET['action']) {
-		
-		case 'restart':
-			$ZMQRequester->send("kill");
-			$reply = $ZMQRequester->recv();
-			if ($reply == "OK") {
-				echo "<script>if(!alert('Платформа перезапущена!')){window.location='/list.php';}</script>";
-				exit;
-			} else {
-				echo $reply;
-				exit;
-			}
-			break;
-			
-		case 'log':
-			try {
-				$ZMQRequester->send("log");
-			} catch (Exception $e) {
-				echo($e->getMessage());
-				exit;
-			}
-			$log = $ZMQRequester->recv();
-			echo($log);
-			exit;
-			break;	
-			
-		case 'cam_settings':
-			if(!isset($_GET['id'])) {
-				echo'ID is required!';
-				exit;
-			}
-			$cam = $mysql->query("SELECT * FROM `cam_list` WHERE id='".$_GET['id']."'")->fetch_assoc();
-			header('Content-Type: application/json');
-			echo(json_encode($cam));
-			exit;
-			break;		
-			
-		default:
-			echo'Invalid request!';
-			exit;
-			
-	}
-} elseif(isset($_POST['action'])) {
-	switch($_POST['action']) {
-		
-		case 'platform_settings':
-			foreach ($_POST as $key => $value) {
-				if ($key == 'action') continue;
-				$mysql->query("UPDATE `cam_settings` SET `value` = '$value' WHERE `cam_settings`.`param` = '$key'");
-			}
-			break;
-			
-		case 'cam_settings':
-		//TODO		
-			$mysql->query("SELECT * FROM `cam_list`");
-			break;	
-			
-		case 'new_cam':	
-			$mysql->query("INSERT INTO `cam_list` (`title`, `source`) VALUES ($_POST[name], $_POST[source])");
-			break;	
-			
-		default:
-			echo'Invalid request!';
-			exit;
-			
-	}
-}
-
-//STATUS
-try {
-	$ZMQRequester->send("status");
-} catch (ZMQException $e) {	
-	$errors['ZMQ'] = $e->getMessage();	
-}
-
-$status = json_decode($ZMQRequester->recv(), true);
-
-if ($mysql) {
-	$cam_list = $mysql->query("SELECT `id`,`title`,`enabled` FROM `cam_list`"); 
-	$settings = $mysql->query("SELECT * FROM `cam_settings`"); 
-}	 */
-?>
+// ------ -->
 <html>
 <head>
 <meta charset="utf-8">
@@ -138,14 +28,13 @@ if ($mysql) {
 			<span class="icon-bar"></span>
 			<span class="icon-bar"></span>
 			</button>
-			<a class="navbar-brand" href="/list.php"><span>PartCCTV WEB GUI</span></a>
+			<a class="navbar-brand" href="/"><span>PartCCTV WEB GUI</span></a>
 		</div>
 
 		<div class="collapse navbar-collapse" id="navbar-ex-collapse">
 			<ul class="nav navbar-nav navbar-right">
-				<li class="active"><a href="/list.php">Камеры</a></li>
 				<li><a href="/archive/">Архив</a></li>
-				<li><a href="#">Документация</a></li>
+				<li><a href="https://github.com/mironoff111/PartCCTV/wiki">Документация</a></li>
 				<li><a href="#">Выход</a></li>					
 			</ul>
 		</div>
