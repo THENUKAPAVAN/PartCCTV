@@ -2,60 +2,78 @@
 // ------
 // PartCCTVCore.php
 // (c) 2016 m1ron0xFF
-// @license: CC BY-NC-ND 4.0
+// @license: CC BY-NC-SA 4.0
 // ------
 
-chdir(dirname(__FILE__));
-require '../vendor/autoload.php';
+chdir(__DIR__);
+require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__.'/../libs/MonologHandler.php';
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
+use unreal4u\MonologHandler;
+use unreal4u\TgLog;
 
 class PartCCTVCore {
     protected $IF_Shutdown = 0;
 	protected $IF_Restart_Required = 0;
 	protected $CorePID;
-	protected $BaseDir;
 	protected $WorkerPIDs = array();
 	protected $CoreSettings = array();
 	protected $Logger;
 	protected $CamLogger;
+	protected $PartCCTV_ini = array();    
 	
     public function __construct() {	
         pcntl_signal(SIGTERM, array($this, "SignalHandler"));
         pcntl_signal(SIGCHLD, array($this, "SignalHandler"));
 		
-		$this->CorePID = getmypid();
-		$this->BaseDir = dirname(__FILE__);		
+		$this->CorePID = getmypid();	
+        
+        $this->PartCCTV_ini = parse_ini_file(__DIR__.'/../PartCCTV.ini', true);
 
 		// Monolog
-		$Handler = new StreamHandler($this->BaseDir.'/PartCCTV.log', Logger::DEBUG);
-		$CamHandler = new StreamHandler($this->BaseDir.'/PartCCTV_CAM.log', Logger::DEBUG);
+        if($this->PartCCTV_ini['monolog_stream']['enabled'] OR $this->PartCCTV_ini['monolog_telegram']['enabled']) {
+            // Main Log
+            $this->Logger  = new Logger('PartCCTV');
 
-		// Main Log
-		$this->Logger  = new Logger('PartCCTV');
-		$this->Logger->pushHandler($Handler);
-
-		// Cams Log
-		$this->CamLogger = new Logger('PartCCTV_CAM');
-		$this->CamLogger->pushHandler($CamHandler);		
+            // Cams Log
+            $this->CamLogger = new Logger('PartCCTV_CAM');       
+            
+            $LoggerRef = new \ReflectionClass( 'Monolog\Logger' );            
+        }
+        
+        //StreamHandler
+        if($this->PartCCTV_ini['monolog_stream']['enabled']) {
+            $level = $LoggerRef->getConstant( $this->PartCCTV_ini['monolog_stream']['log_level'] );
+            $this->Logger->pushHandler(new StreamHandler(__DIR__.'/../PartCCTV.log', $level));            
+    		$this->CamLogger->pushHandler(new StreamHandler(__DIR__.'/../PartCCTV_CAM.log', $level));	        
+        }
+        //TelegramHandler
+        if($this->PartCCTV_ini['monolog_telegram']['enabled']) {
+            $level = $LoggerRef->getConstant( $this->PartCCTV_ini['monolog_telegram']['log_level'] );            
+            $TelegramHandler = new MonologHandler(new TgLog($this->PartCCTV_ini['monolog_telegram']['token']), $this->PartCCTV_ini['monolog_telegram']['user_id'], $level);
+            $this->Logger->pushHandler($TelegramHandler);
+            $this->CamLogger->pushHandler($TelegramHandler);             
+        }    	        
     }
 
     public function run() {	
 
 		$this->Logger->info('Запуск ядра платформы PartCCTV');
-		$this->Logger->debug('PID ядра: '.$this->CorePID);		
+		$this->Logger->info('PID ядра: '.$this->CorePID);		
 		
-		// MySQL
-		$MySQLi = new mysqli('localhost', 'root', 'cctv', 'cctv');
-		
-		// Проверяем соединение с БД //
-		if (mysqli_connect_errno()) {
-			$this->Logger->EMERGENCY('Ошибка соединения с БД :'.mysqli_connect_error());
-			exit();
-		}		
-		
-		$CoreSettings_raw = $MySQLi->query("SELECT * FROM cam_settings");
-		while ($row = $CoreSettings_raw->fetch_assoc()) {
+        //PDO
+        try {
+            $DBH = new PDO($this->PartCCTV_ini['db']['dsn'], $this->PartCCTV_ini['db']['user'], $this->PartCCTV_ini['db']['password']);
+        }
+        catch(PDOException $e) {  
+			$this->Logger->EMERGENCY('Ошибка соединения с БД : '.$e->getMessage());
+			exit();            
+        }        
+            		
+		$CoreSettings_raw = $DBH->query("SELECT * FROM cam_settings");
+        $CoreSettings_raw->setFetchMode(PDO::FETCH_ASSOC);  
+		while ($row = $CoreSettings_raw->fetch()) {
 			$this->CoreSettings[$row['param']] = $row['value'];
 		}
 		unset($CoreSettings_raw);
@@ -66,10 +84,11 @@ class PartCCTVCore {
 			exit;
 		}
 		
-		$CamSettings_raw = $MySQLi->query("SELECT id FROM cam_list WHERE enabled = 1");	
+		$CamSettings_raw = $DBH->query("SELECT id FROM cam_list WHERE enabled = 1");
+        $CamSettings_raw->setFetchMode(PDO::FETCH_ASSOC);         
 		
 		//Для каждой камеры запускаем свой рабочий процесс			
-		while ($row = $CamSettings_raw->fetch_assoc()) {
+		while ($row = $CamSettings_raw->fetch()) {
 			$this->CamWorker($row['id']);
 		}
 		unset($row);
@@ -131,15 +150,11 @@ class PartCCTVCore {
 						
 						case 'worker_info':
 							if(isset($Parsed_Request['id'])) {
-								$CamInfo = $MySQLi->prepare("SELECT source FROM cam_list WHERE enabled = 1 AND id = ?");
-								$CamInfo->bind_param("i", $Parsed_Request['id']);
-								$CamInfo->execute();
-								$CamInfo->bind_result($source);
-								$CamInfo->fetch();
-								$CamInfo->close();
-								
-								$Response = $source;
-								unset($source);
+								$CamInfo = $DBH->prepare("SELECT source FROM cam_list WHERE enabled = 1 AND id = :id");
+                                $CamInfo->bindParam(':id', $Parsed_Request['id']);
+                                $CamInfo->execute();
+								$Response = $CamInfo->fetchColumn();
+                                $CamInfo = null;
 							} else {
 								$Request_Error = 'worker_info: ID is required!';
 							}
@@ -177,11 +192,11 @@ class PartCCTVCore {
 							break;								
 							
 						case 'core_log':
-							$Response_Log = file_get_contents($this->BaseDir.'/PartCCTV.log');			
+							$Response_Log = file_get_contents(__DIR__.'/PartCCTV.log');			
 							break;	
 							
 						case 'cam_log':
-							$Response_Log = file_get_contents($this->BaseDir.'/PartCCTV_CAM.log');		
+							$Response_Log = file_get_contents(__DIR__.'/PartCCTV_CAM.log');		
 							break;	
 							
 						default:
@@ -266,7 +281,7 @@ class PartCCTVCore {
 				// А может нам пора выключиться?
 				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
 				if($ZMQRequester->recv()) {
-					$this->CamLogger->info("Завершается воркер id".$id." с PID ".getmypid());
+					$this->CamLogger->debug("Завершается воркер id".$id." с PID ".getmypid());
 					exit;
 				} 	
 
@@ -304,7 +319,7 @@ class PartCCTVCore {
     public function SignalHandler($signo, $pid = null, $status = null) {
         switch($signo) {
             case SIGTERM:
-				$this->Logger->DEBUG('Получен сигнал SIGTERM, начало завершения работы платформы');
+				$this->Logger->info('Получен сигнал SIGTERM, начало завершения работы платформы');
 				$this->IF_Shutdown = 1;
 				exec('killall ffmpeg');
                 break;		

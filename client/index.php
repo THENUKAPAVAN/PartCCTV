@@ -3,15 +3,17 @@
 // RESTful API Backend
 // index.php
 // (c) 2016 m1ron0xFF
-// @license: CC BY-NC-ND 4.0
+// @license: CC BY-NC-SA 4.0
 // ------
 
 require_once __DIR__.'/../vendor/autoload.php'; 
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 
+$PartCCTV_ini = parse_ini_file(__DIR__.'/../PartCCTV.ini', true);
+
 $app = new Silex\Application();
-$app['debug'] = true;
+$app['debug'] = $PartCCTV_ini['silex']['debug'];
 
 // ZeroMQ
 $ZMQContext = new ZMQContext();
@@ -19,10 +21,14 @@ $ZMQRequester = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REQ);
 $ZMQRequester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 1250);
 $ZMQRequester->connect("tcp://127.0.0.1:5555");
 
-// MySQL
-$MySQLi = new mysqli('localhost', 'root', 'cctv', 'cctv');
-$MySQLi->set_charset("utf8");
-
+//PDO
+try {
+    $DBH = new PDO($PartCCTV_ini['db']['dsn'], $PartCCTV_ini['db']['user'], $PartCCTV_ini['db']['password']);
+}
+catch(PDOException $e) {
+    $app->abort(500, 'Ошибка соединения с БД : '.$e->getMessage());            
+} 
+    
 $app->get('/', function () use ($app) {
     return $app->redirect('/web_gui/');
 });
@@ -47,9 +53,9 @@ $app->get('/api/1.0/platform/status', function () use ($app, $ZMQRequester) {
 
 });
 
-$app->get('/api/1.0/platform/settings', function () use($app, $MySQLi) {
+$app->get('/api/1.0/platform/settings', function () use($app, $DBH) {
 
-	$result = $MySQLi->query("SELECT * FROM `cam_settings`");
+	$result = $DBH->query("SELECT * FROM `cam_settings`");
 	for ($set = array (); $row = $result->fetch_assoc(); $set[] = $row);
 	unset($row);
 
@@ -57,7 +63,7 @@ $app->get('/api/1.0/platform/settings', function () use($app, $MySQLi) {
 
 });
 
-$app->put('/api/1.0/platform/settings', function (Request $request) use($app, $MySQLi) {
+$app->put('/api/1.0/platform/settings', function (Request $request) use($app, $DBH) {
 
 	foreach ($request as $key => $value) {
 		$mysql->query("UPDATE `cam_settings` SET `value` = '$value' WHERE `cam_settings`.`param` = '$key'");
@@ -115,9 +121,9 @@ $app->post('/api/1.0/platform/stop', function () use($app, $ZMQRequester) {
 
 });
 
-$app->get('/api/1.0/camera/list', function () use($app, $ZMQRequester, $MySQLi) {
+$app->get('/api/1.0/camera/list', function () use($app, $ZMQRequester, $DBH) {
 
-	$result = $MySQLi->query("SELECT * FROM `cam_list`");
+	$result = $DBH->query("SELECT * FROM `cam_list`");
 	for ($set = array (); $row = $result->fetch_assoc(); $set[] = $row);
 	unset($row);
 
@@ -126,7 +132,7 @@ $app->get('/api/1.0/camera/list', function () use($app, $ZMQRequester, $MySQLi) 
 });
 
 // Under construction
-$app->get('/api/1.0/camera/list1', function () use($app, $ZMQRequester, $MySQLi) {
+$app->get('/api/1.0/camera/list1', function () use($app, $ZMQRequester, $DBH) {
 
 	try {
 		$ZMQRequester->send(json_encode(array (	'action' => 'core_workerpids' )));
@@ -150,23 +156,23 @@ $app->get('/api/1.0/camera/log', function () use ($app, $ZMQRequester) {
 
 });
 
-$app->post('/api/1.0/camera/new', function (Request $request) use($app, $ZMQRequester, $MySQLi) {
+$app->post('/api/1.0/camera/new', function (Request $request) use($app, $ZMQRequester, $DBH) {
 // TBD
 });
 
-$app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($app, $ZMQRequester, $MySQLi) {
+$app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($app, $ZMQRequester, $DBH) {
 // TBD
 });
 
-$app->delete('/api/1.0/camera/{camera}', function ($camera) use($app, $ZMQRequester, $MySQLi) {
+$app->delete('/api/1.0/camera/{camera}', function ($camera) use($app, $ZMQRequester, $DBH) {
 // TBD
 });
 
-$app->get('/api/1.0/archive/list', function () use($app, $MySQLi) {
+$app->get('/api/1.0/archive/list', function () use($app, $DBH) {
 // TBD
 });
 
-$app->get('//api/1.0/archive/camera/{camera}', function ($camera) use($app, $MySQLi) {
+$app->get('//api/1.0/archive/camera/{camera}', function ($camera) use($app, $DBH) {
 // TBD
 });
 

@@ -11,9 +11,10 @@ T.B.D.
 ## About
 
 ### Requirements
-  - PHP 7.0 with MySQL and ZeroMQ binding ( http://zeromq.org/bindings:php )
+  - Linux/FreeBSD/MacOSX ( except Windows because of pcntl_fork() )
+  - PHP 7.0 with PDO and ZeroMQ binding ( http://zeromq.org/bindings:php )
   - ZeroMQ ( http://zeromq.org/area:download )
-  - MySQL (MariaDB, Percona, etc.) or Postgresql (T.B.D.)
+  - PDO compatible DB (MySQL, Postgresql, SQlite, etc.)
   - FFmpeg
 
 ### Contributing
@@ -25,4 +26,4 @@ T.B.D.
 
 ### License
 
-PartCCTV is licensed under the CC BY-NC-ND 4.0 License - see the `LICENSE.md` file for details
+PartCCTV is licensed under the CC BY-NC-SA 4.0 License - see the `LICENSE.md` file for details
