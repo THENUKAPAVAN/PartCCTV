@@ -192,11 +192,11 @@ class PartCCTVCore {
 							break;								
 							
 						case 'core_log':
-							$Response_Log = file_get_contents(__DIR__.'/PartCCTV.log');			
+							$Response_Log = file_get_contents(__DIR__.'/../PartCCTV.log');			
 							break;	
 							
 						case 'cam_log':
-							$Response_Log = file_get_contents(__DIR__.'/PartCCTV_CAM.log');		
+							$Response_Log = file_get_contents(__DIR__.'/../PartCCTV_CAM.log');		
 							break;	
 							
 						default:

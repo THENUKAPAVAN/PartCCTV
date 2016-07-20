@@ -18,7 +18,7 @@ $app['debug'] = $PartCCTV_ini['silex']['debug'];
 // ZeroMQ
 $ZMQContext = new ZMQContext();
 $ZMQRequester = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REQ);
-$ZMQRequester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 1250);
+$ZMQRequester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 1500);
 $ZMQRequester->connect("tcp://127.0.0.1:5555");
 
 //PDO
@@ -26,8 +26,14 @@ try {
     $DBH = new PDO($PartCCTV_ini['db']['dsn'], $PartCCTV_ini['db']['user'], $PartCCTV_ini['db']['password']);
 }
 catch(PDOException $e) {
-    $app->abort(500, 'Ошибка соединения с БД : '.$e->getMessage());            
+    $Exception = 'PDO ConnError : '.$e->getMessage();            
 } 
+
+if(isset($Exception)) {
+    $app->before(function () use($Exception) {
+        throw new Exception($Exception);
+    });
+}
     
 $app->get('/', function () use ($app) {
     return $app->redirect('/web_gui/');
@@ -56,7 +62,8 @@ $app->get('/api/1.0/platform/status', function () use ($app, $ZMQRequester) {
 $app->get('/api/1.0/platform/settings', function () use($app, $DBH) {
 
 	$result = $DBH->query("SELECT * FROM `cam_settings`");
-	for ($set = array (); $row = $result->fetch_assoc(); $set[] = $row);
+    $result->setFetchMode(PDO::FETCH_ASSOC);
+	for ($set = array (); $row = $result->fetch(); $set[] = $row);
 	unset($row);
 
 	return $app->json($set);
@@ -65,11 +72,15 @@ $app->get('/api/1.0/platform/settings', function () use($app, $DBH) {
 
 $app->put('/api/1.0/platform/settings', function (Request $request) use($app, $DBH) {
 
+    $STH = $DBH->prepare("UPDATE `cam_settings` SET `value` = :value WHERE `cam_settings`.`param` = :param");
+    
 	foreach ($request as $key => $value) {
-		$mysql->query("UPDATE `cam_settings` SET `value` = '$value' WHERE `cam_settings`.`param` = '$key'");
+        $STH->bindParam(':value', $value);
+        $STH->bindParam(':param', $key);
+		$STH->execute();
 	}
 
-	return $app->json($set);
+	return new Response('OK', 200, ['Content-Type' => 'application/json']);
 
 });
 
@@ -124,8 +135,8 @@ $app->post('/api/1.0/platform/stop', function () use($app, $ZMQRequester) {
 $app->get('/api/1.0/camera/list', function () use($app, $ZMQRequester, $DBH) {
 
 	$result = $DBH->query("SELECT * FROM `cam_list`");
-	for ($set = array (); $row = $result->fetch_assoc(); $set[] = $row);
-	unset($row);
+    $result->setFetchMode(PDO::FETCH_ASSOC);
+	for ($set = array (); $row = $result->fetch(); $set[] = $row);
 
 	return $app->json($set);
 
