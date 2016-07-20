@@ -1,4 +1,7 @@
-# PartCCTV, Yet Another CCTV App
+PartCCTV, Yet Another CCTV App
+==================
+
+[![SensioLabsInsight](https://insight.sensiolabs.com/projects/6308734b-20af-4963-b73e-a1c860cfb595/mini.png)](https://insight.sensiolabs.com/projects/6308734b-20af-4963-b73e-a1c860cfb595)
 
 ## Features
   - Lightweight

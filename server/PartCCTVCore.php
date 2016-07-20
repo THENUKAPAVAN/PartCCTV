@@ -32,7 +32,7 @@ class PartCCTVCore {
         $this->PartCCTV_ini = parse_ini_file(__DIR__.'/../PartCCTV.ini', true);
 
 		// Monolog
-        if($this->PartCCTV_ini['monolog_stream']['enabled'] OR $this->PartCCTV_ini['monolog_telegram']['enabled']) {
+        if($this->PartCCTV_ini['monolog_stream']['enabled'] || $this->PartCCTV_ini['monolog_telegram']['enabled']) {
             // Main Log
             $this->Logger  = new Logger('PartCCTV');
 
