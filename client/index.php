@@ -188,5 +188,3 @@ $app->get('//api/1.0/archive/camera/{camera}', function ($camera) use($app, $DBH
 });
 
 $app->run(); 
-
-?>

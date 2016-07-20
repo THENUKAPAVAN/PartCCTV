@@ -53,4 +53,3 @@ $STDERR = fopen('/dev/null', 'r');
 require 'PartCCTVCore.php';
 $PartCCTVCore = new PartCCTVCore;
 $PartCCTVCore->run();
-?>
