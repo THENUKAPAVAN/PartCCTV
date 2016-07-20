@@ -1,4 +1,7 @@
 {
+    "name"              : "mironoff111/PartCCTV",
+    "description"       : "PartCCTV, Yet Another CCTV App",
+    "licence"           : "CC BY-NC-ND 4.0",
     "require": {
         "monolog/monolog": "^1.19",
         "silex/silex": "~2.0",

@@ -24,8 +24,8 @@ class PartCCTVCore {
 	protected $PartCCTV_ini = array();    
 	
     public function __construct() {	
-        pcntl_signal(SIGTERM, array($this, "SignalHandler"));
-        pcntl_signal(SIGCHLD, array($this, "SignalHandler"));
+        pcntl_signal(SIGTERM, array($this, "signalHandler"));
+        pcntl_signal(SIGCHLD, array($this, "signalHandler"));
 		
 		$this->CorePID = getmypid();	
         
@@ -89,7 +89,7 @@ class PartCCTVCore {
 		
 		//Для каждой камеры запускаем свой рабочий процесс			
 		while ($row = $CamSettings_raw->fetch()) {
-			$this->CamWorker($row['id']);
+			$this->camWorker($row['id']);
 		}
 		unset($row);
 		unset($CamSettings_raw);
@@ -245,7 +245,7 @@ class PartCCTVCore {
 		}
     } 
 
-	protected function CamWorker($id) { 
+	protected function camWorker($id) { 
         // Создаем дочерний процесс
         // весь код после pcntl_fork() будет выполняться
         // двумя процессами: родительским и дочерним
@@ -316,7 +316,7 @@ class PartCCTVCore {
 		}
 	}
 		
-    public function SignalHandler($signo, $pid = null, $status = null) {
+    public function signalHandler($signo, $pid = null, $status = null) {
         switch($signo) {
             case SIGTERM:
 				$this->Logger->info('Получен сигнал SIGTERM, начало завершения работы платформы');

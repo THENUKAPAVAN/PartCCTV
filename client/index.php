@@ -70,7 +70,7 @@ $app->get('/api/1.0/platform/settings', function () use($app, $DBH) {
 
 });
 
-$app->put('/api/1.0/platform/settings', function (Request $request) use($app, $DBH) {
+$app->put('/api/1.0/platform/settings', function (Request $request) use($DBH) {
 
     $STH = $DBH->prepare("UPDATE `cam_settings` SET `value` = :value WHERE `cam_settings`.`param` = :param");
     
