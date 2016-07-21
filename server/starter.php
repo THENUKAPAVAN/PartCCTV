@@ -2,7 +2,7 @@
 // ------
 // starter.php
 // (c) 2016 m1ron0xFF
-// @license: CC BY-NC-ND 4.0
+// @license: CC BY-NC-SA 4.0
 // ------
 
 $errors = array();
@@ -11,12 +11,12 @@ if (version_compare(PHP_VERSION, '7.0.0') < 0) {
     $errors[] = 'Неподерживаемая версия PHP: ' . PHP_VERSION . PHP_EOL;
 }
 
-if (!(extension_loaded('mysql') or extension_loaded('mysqli'))) {
-   $errors[] = 'Отсутствует расширение MySQL' . PHP_EOL;
+if (!extension_loaded('pdo')) {
+   $errors[] = 'Отсутствует расширение PDO' . PHP_EOL;
 }
 
 if (!extension_loaded('zmq')) {
-    $errors[] = 'Отсутствует расширение ZeroMQ ("zmq")' . PHP_EOL;
+    $errors[] = 'Отсутствует расширение ZeroMQ (zmq)' . PHP_EOL;
 }
 
 if (!empty($errors)) {
@@ -41,7 +41,7 @@ if ($child_pid) {
 // Делаем основным процессом дочерний.
 posix_setsid();
 
-ini_set('error_log',dirname(__FILE__).'/error.log');
+ini_set('error_log',__DIR__.'/php_errors.log');
 fclose(STDIN);
 fclose(STDOUT);
 fclose(STDERR);
@@ -49,7 +49,7 @@ $STDIN = fopen('/dev/null', 'r');
 $STDOUT = fopen('/dev/null', 'r');
 $STDERR = fopen('/dev/null', 'r');
 
+// Поехали!
 require 'PartCCTVCore.php';
 $PartCCTVCore = new PartCCTVCore;
 $PartCCTVCore->run();
-?>

@@ -1,5 +1,10 @@
 {
+    "name"              : "mironoff111/part-cctv",
+    "description"       : "PartCCTV, Yet Another CCTV App",
+    "license"           : "CC-BY-NC-ND-4.0",
     "require": {
-        "monolog/monolog": "^1.19"
+        "monolog/monolog": "^1.19",
+        "silex/silex": "~2.0",
+        "unreal4u/telegram-api": "^1.2"        
     }
 }
