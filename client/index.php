@@ -70,6 +70,7 @@ $app->get('/api/1.0/platform/settings', function () use($app, $DBH) {
 
 });
 
+// To Be Tested
 $app->put('/api/1.0/platform/settings', function (Request $request) use($DBH) {
 
     $STH = $DBH->prepare("UPDATE `cam_settings` SET `value` = :value WHERE `cam_settings`.`param` = :param");
@@ -134,25 +135,34 @@ $app->post('/api/1.0/platform/stop', function () use($app, $ZMQRequester) {
 
 $app->get('/api/1.0/camera/list', function () use($app, $ZMQRequester, $DBH) {
 
+    // Массив $ar1 из БД
 	$result = $DBH->query("SELECT * FROM `cam_list`");
     $result->setFetchMode(PDO::FETCH_ASSOC);
-	for ($set = array (); $row = $result->fetch(); $set[] = $row);
+	for ($ar1 = array (); $row = $result->fetch(); $ar1[] = $row);
 
-	return $app->json($set);
-
-});
-
-// Under construction
-$app->get('/api/1.0/camera/list1', function () use($app, $ZMQRequester, $DBH) {
-
+    // Массив $ar2 PIDов из ядра (через ZMQ)
 	try {
 		$ZMQRequester->send(json_encode(array (	'action' => 'core_workerpids' )));
 	} catch (ZMQException $e) {	
 		$app->abort(500, $e->getMessage());
-	}
+	}	
 
-	return new Response($ZMQRequester->recv(), 200, ['Content-Type' => 'application/json']);
+    $ar2 = json_decode($ZMQRequester->recv(), true);
+    
+    $ar2 = array_flip($ar2);
+    foreach($ar1 as &$i) {
+       // Если во втором массиве есть элемент с соответствующим id
+       if (isset($ar2[$i['id']])) {
+          // Добавляем его в первый массив
+          $i['pid'] = $ar2[$i['id']];
+       } else {
+          //PIDа нет, добавляем null
+          $i['pid'] = null;
+       }
+    }  
 
+	return $app->json($ar1);
+    
 });
 
 $app->get('/api/1.0/camera/log', function () use ($app, $ZMQRequester) {
@@ -183,7 +193,7 @@ $app->get('/api/1.0/archive/list', function () use($app, $DBH) {
 // TBD
 });
 
-$app->get('//api/1.0/archive/camera/{camera}', function ($camera) use($app, $DBH) {
+$app->get('//api/1.0/archive/{camera}', function ($camera) use($app, $DBH) {
 // TBD
 });
 
