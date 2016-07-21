@@ -52,7 +52,7 @@ $app->get('/web_gui/', function() {
 
 }); 
 
-$app->get('/api/1.0/platform/status', function () use ($app, $ZMQRequester) {
+$app->get('/api/1.0/platform/status', function () use ($ZMQRequester) {
 
 	$ZMQRequester->send(json_encode(array (	'action' => 'core_status' )));
     $Response = $ZMQRequester->recv();
@@ -96,7 +96,7 @@ $app->put('/api/1.0/platform/settings', function (Request $request) use($app, $D
     }
 });
 
-$app->get('/api/1.0/platform/log', function () use ($app, $ZMQRequester) {
+$app->get('/api/1.0/platform/log', function () use ($ZMQRequester) {
 
 	$ZMQRequester->send(json_encode(array (	'action' => 'core_log' )));
 	
@@ -104,7 +104,7 @@ $app->get('/api/1.0/platform/log', function () use ($app, $ZMQRequester) {
 
 });
 
-$app->post('/api/1.0/platform/reload', function () use($app, $ZMQRequester) {
+$app->post('/api/1.0/platform/reload', function () use($ZMQRequester) {
 
 	$ZMQRequester->send(json_encode(array (	'action' => 'core_reload' )));
 	
@@ -112,7 +112,7 @@ $app->post('/api/1.0/platform/reload', function () use($app, $ZMQRequester) {
 
 });
 
-$app->post('/api/1.0/platform/restart', function () use($app, $ZMQRequester) {
+$app->post('/api/1.0/platform/restart', function () use($ZMQRequester) {
 
 	$ZMQRequester->send(json_encode(array (	'action' => 'core_restart' )));
 	
@@ -120,7 +120,7 @@ $app->post('/api/1.0/platform/restart', function () use($app, $ZMQRequester) {
 
 });
 
-$app->post('/api/1.0/platform/stop', function () use($app, $ZMQRequester) {
+$app->post('/api/1.0/platform/stop', function () use($ZMQRequester) {
 	
     $ZMQRequester->send(json_encode(array (	'action' => 'core_stop' )));
 
@@ -156,7 +156,7 @@ $app->get('/api/1.0/camera/list', function () use($app, $ZMQRequester, $DBH) {
     
 });
 
-$app->get('/api/1.0/camera/log', function () use ($app, $ZMQRequester) {
+$app->get('/api/1.0/camera/log', function () use ($ZMQRequester) {
     
 	$ZMQRequester->send(json_encode(array (	'action' => 'cam_log' )));
 
@@ -164,7 +164,7 @@ $app->get('/api/1.0/camera/log', function () use ($app, $ZMQRequester) {
     
 });
 
-$app->post('/api/1.0/camera/new', function (Request $request) use($app, $ZMQRequester, $DBH) {
+$app->post('/api/1.0/camera/new', function (Request $request) use($ZMQRequester, $DBH) {
     //TBD
     
     // RestartIsRequired flag
@@ -183,7 +183,7 @@ $app->post('/api/1.0/camera/new', function (Request $request) use($app, $ZMQRequ
     }
 });
 
-$app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($app, $ZMQRequester, $DBH) {
+$app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($ZMQRequester, $DBH) {
     //TBD
     
     // RestartIsRequired flag
@@ -202,7 +202,7 @@ $app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($
     }
 });
 
-$app->delete('/api/1.0/camera/{camera}', function ($camera) use($app, $ZMQRequester, $DBH) {
+$app->delete('/api/1.0/camera/{camera}', function ($camera) use($ZMQRequester, $DBH) {
     //TBD
     
     // RestartIsRequired flag
