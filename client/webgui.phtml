@@ -204,21 +204,21 @@ webgui.phtml
       <div class="modal-body">
 		<form action="" method="post">
 		<fieldset>
-<?php
-/* 			while ($option = $settings->fetch_assoc()) {
-				echo'            <div class="control-group">
-              <label class="control-label" for="'.$option["param"].'">'.$option["param"].'</label>
+            <div class="control-group">
+              <label class="control-label" for="param1">param1</label>
               <div class="controls">
-                <input type="text" id="'.$option["param"].'" name="'.$option["param"].'" value="'.$option["value"].'" required class="form-control input-lg">
+                <input type="text" id="param1" name="param1" value="value1" required class="form-control input-lg">
               </div>
-            </div>';
-			}
-			unset($option); */
-?>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="param2">param2</label>
+              <div class="controls">
+                <input type="text" id="param2" name="param2" value="value2" required class="form-control input-lg">
+              </div>
+            </div>            
 			<br>
 			<input type="hidden" name="action" value="platform_settings">
 			<input class="btn btn-primary" type="submit" value="Сохранить">
-
 		</fieldset>
 		</form>
       </div>
