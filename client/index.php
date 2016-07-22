@@ -15,30 +15,21 @@ $PartCCTV_ini = parse_ini_file(__DIR__.'/../PartCCTV.ini', true);
 $app = new Silex\Application();
 $app['debug'] = $PartCCTV_ini['silex']['debug'];
 
-// ZeroMQ
-try {
-    $ZMQContext = new ZMQContext();
-    $ZMQRequester = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REQ);
+// Declare parameters.
+$app['db'] = $PartCCTV_ini;
+
+// Declare a PDO service.
+$app['dbh'] = function () use ($app) {
+    return new PDO($app['db']['db']['dsn'], $app['db']['db']['user'], $app['db']['db']['password']);
+};
+
+// Declare a ZMQ service.
+$app['zmq'] = function () use ($app) {
+    $ZMQRequester = new ZMQSocket(new ZMQContext(), ZMQ::SOCKET_REQ);
     $ZMQRequester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 1500);
     $ZMQRequester->connect("tcp://127.0.0.1:5555");
-}
-catch(ZMQException $e) {
-    $Exception = $e->getMessage();    
-    $app->before(function () use($Exception) {
-        throw new ZMQException($Exception);
-    });
-}
-
-//PDO
-try {
-    $DBH = new PDO($PartCCTV_ini['db']['dsn'], $PartCCTV_ini['db']['user'], $PartCCTV_ini['db']['password']);
-}
-catch(PDOException $e) {
-    $Exception = $e->getMessage();    
-    $app->before(function () use($Exception) {
-        throw new PDOException($Exception);
-    });
-}
+    return $ZMQRequester;
+};
     
 $app->get('/', function () use ($app) {
     return $app->redirect('/web_gui/');
@@ -52,10 +43,10 @@ $app->get('/web_gui/', function() {
 
 }); 
 
-$app->get('/api/1.0/platform/status', function () use ($ZMQRequester) {
+$app->get('/api/1.0/platform/status', function () use ($app) {
 
-	$ZMQRequester->send(json_encode(array (	'action' => 'core_status' )));
-    $Response = $ZMQRequester->recv();
+	$app['zmq']->send(json_encode(array (	'action' => 'core_status' )));
+    $Response = $app['zmq']->recv();
     
     if($Response === false) {
         throw new Exception('Seems like PartCCTV Core is down!');
@@ -65,9 +56,9 @@ $app->get('/api/1.0/platform/status', function () use ($ZMQRequester) {
 
 });
 
-$app->get('/api/1.0/platform/settings', function () use($app, $DBH) {
+$app->get('/api/1.0/platform/settings', function () use($app) {
 
-	$result = $DBH->query("SELECT * FROM `cam_settings`");
+	$result = $app['dbh']->query("SELECT * FROM `cam_settings`");
     $result->setFetchMode(PDO::FETCH_ASSOC);
 	for ($set = array (); $row = $result->fetch(); $set[] = $row);
 	unset($row);
@@ -77,13 +68,13 @@ $app->get('/api/1.0/platform/settings', function () use($app, $DBH) {
 });
 
 // To Be Tested
-$app->put('/api/1.0/platform/settings', function (Request $request) use($app, $DBH) {
+$app->put('/api/1.0/platform/settings', function (Request $request) use($app) {
     
     if(empty($request->request)) {
 		$app->abort(400, '400 Bad Request');        
     } else {
 
-        $STH = $DBH->prepare("UPDATE `cam_settings` SET `value` = :value WHERE `cam_settings`.`param` = :param");
+        $STH = $app['dbh']->prepare("UPDATE `cam_settings` SET `value` = :value WHERE `cam_settings`.`param` = :param");
         
         foreach ($request->request as $key => $value) {
             $STH->bindParam(':value', $value);
@@ -96,49 +87,49 @@ $app->put('/api/1.0/platform/settings', function (Request $request) use($app, $D
     }
 });
 
-$app->get('/api/1.0/platform/log', function () use ($ZMQRequester) {
+$app->get('/api/1.0/platform/log', function () use ($app) {
 
-	$ZMQRequester->send(json_encode(array (	'action' => 'core_log' )));
+	$app['zmq']->send(json_encode(array (	'action' => 'core_log' )));
 	
-	return new Response($ZMQRequester->recv(), 200, ['Content-Type' => 'application/json']);
+	return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
 
 });
 
-$app->post('/api/1.0/platform/reload', function () use($ZMQRequester) {
+$app->post('/api/1.0/platform/reload', function () use($app) {
 
-	$ZMQRequester->send(json_encode(array (	'action' => 'core_reload' )));
+	$app['zmq']->send(json_encode(array (	'action' => 'core_reload' )));
 	
-	return new Response($ZMQRequester->recv(), 200, ['Content-Type' => 'application/json']);
+	return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
 
 });
 
-$app->post('/api/1.0/platform/restart', function () use($ZMQRequester) {
+$app->post('/api/1.0/platform/restart', function () use($app) {
 
-	$ZMQRequester->send(json_encode(array (	'action' => 'core_restart' )));
+	$app['zmq']->send(json_encode(array (	'action' => 'core_restart' )));
 	
-	return new Response($ZMQRequester->recv(), 200, ['Content-Type' => 'application/json']);
+	return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
 
 });
 
-$app->post('/api/1.0/platform/stop', function () use($ZMQRequester) {
+$app->post('/api/1.0/platform/stop', function () use($app) {
 	
-    $ZMQRequester->send(json_encode(array (	'action' => 'core_stop' )));
+    $app['zmq']->send(json_encode(array (	'action' => 'core_stop' )));
 
-	return new Response($ZMQRequester->recv(), 200, ['Content-Type' => 'application/json']);
+	return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
 
 });
 
-$app->get('/api/1.0/camera/list', function () use($app, $ZMQRequester, $DBH) {
+$app->get('/api/1.0/camera/list', function () use($app) {
 
     // Массив $ar1 из БД
-	$result = $DBH->query("SELECT * FROM `cam_list`");
+	$result = $app['dbh']->query("SELECT * FROM `cam_list`");
     $result->setFetchMode(PDO::FETCH_ASSOC);
 	for ($ar1 = array (); $row = $result->fetch(); $ar1[] = $row);
 
     // Массив $ar2 PIDов из ядра (через ZMQ)
-	$ZMQRequester->send(json_encode(array (	'action' => 'core_workerpids' )));	
+	$app['zmq']->send(json_encode(array (	'action' => 'core_workerpids' )));	
 
-    $ar2 = json_decode($ZMQRequester->recv(), true);
+    $ar2 = json_decode($app['zmq']->recv(), true);
     
     $ar2 = array_flip($ar2);
     foreach($ar1 as &$i) {
@@ -156,21 +147,21 @@ $app->get('/api/1.0/camera/list', function () use($app, $ZMQRequester, $DBH) {
     
 });
 
-$app->get('/api/1.0/camera/log', function () use ($ZMQRequester) {
+$app->get('/api/1.0/camera/log', function () use ($app) {
     
-	$ZMQRequester->send(json_encode(array (	'action' => 'cam_log' )));
+	$app['zmq']->send(json_encode(array (	'action' => 'cam_log' )));
 
-	return new Response($ZMQRequester->recv(), 200, ['Content-Type' => 'application/json']);
+	return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
     
 });
 
-$app->post('/api/1.0/camera/new', function (Request $request) use($ZMQRequester, $DBH) {
+$app->post('/api/1.0/camera/new', function (Request $request) use($app) {
     //TBD
     
     // RestartIsRequired flag
     try {
-        $ZMQRequester->send(json_encode(array (	'action' => 'core_restart_is_required' )));
-        $Response = $ZMQRequester->recv();
+        $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
+        $Response = $app['zmq']->recv();
         
         if($Response === false) {
             throw new Exception('Seems like PartCCTV Core is down!');
@@ -183,13 +174,13 @@ $app->post('/api/1.0/camera/new', function (Request $request) use($ZMQRequester,
     }
 });
 
-$app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($ZMQRequester, $DBH) {
+$app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($app) {
     //TBD
     
     // RestartIsRequired flag
     try {
-        $ZMQRequester->send(json_encode(array (	'action' => 'core_restart_is_required' )));
-        $Response = $ZMQRequester->recv();
+        $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
+        $Response = $app['zmq']->recv();
         
         if($Response === false) {
             throw new Exception('Seems like PartCCTV Core is down!');
@@ -202,13 +193,13 @@ $app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($
     }
 });
 
-$app->delete('/api/1.0/camera/{camera}', function ($camera) use($ZMQRequester, $DBH) {
+$app->delete('/api/1.0/camera/{camera}', function ($camera) use($app) {
     //TBD
     
     // RestartIsRequired flag
     try {
-        $ZMQRequester->send(json_encode(array (	'action' => 'core_restart_is_required' )));
-        $Response = $ZMQRequester->recv();
+        $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
+        $Response = $app['zmq']->recv();
         
         if($Response === false) {
             throw new Exception('Seems like PartCCTV Core is down!');
@@ -221,11 +212,11 @@ $app->delete('/api/1.0/camera/{camera}', function ($camera) use($ZMQRequester, $
     }
 });
 
-$app->get('/api/1.0/archive/list', function () use($app, $DBH) {
+$app->get('/api/1.0/archive/list', function () use($app) {
     //TBD
 });
 
-$app->get('//api/1.0/archive/{camera}', function ($camera) use($app, $DBH) {
+$app->get('//api/1.0/archive/{camera}', function ($camera) use($app) {
     //TBD
 });
 

@@ -201,26 +201,7 @@ webgui.phtml
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         <h4 class="modal-title" id="core_settings">Настройки платформы</h4>
       </div>
-      <div class="modal-body">
-		<form action="" method="post">
-		<fieldset>
-            <div class="control-group">
-              <label class="control-label" for="param1">param1</label>
-              <div class="controls">
-                <input type="text" id="param1" name="param1" value="value1" required class="form-control input-lg">
-              </div>
-            </div>
-            <div class="control-group">
-              <label class="control-label" for="param2">param2</label>
-              <div class="controls">
-                <input type="text" id="param2" name="param2" value="value2" required class="form-control input-lg">
-              </div>
-            </div>            
-			<br>
-			<input type="hidden" name="action" value="platform_settings">
-			<input class="btn btn-primary" type="submit" value="Сохранить">
-		</fieldset>
-		</form>
+      <div class="modal-body" id="core_settings_ajax">
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
@@ -283,8 +264,50 @@ webgui.phtml
   </div>
 </div>
 
-<!-- Core Log Modal -->
 <script>
+// Core Settings Modal
+$("#core_settings").on("show.bs.modal", function(e) {
+$.ajax({
+    url: '/api/1.0/platform/settings',
+    type: "get",
+    dataType: "json",
+    success: function(data, textStatus, jqXHR) {
+        // since we are using jQuery, you don't need to parse response
+        drawSettingsModal(data);
+    }
+});
+
+function drawSettingsModal(data) {
+    //часть формы до полей, которые генерируем автоматически
+    var html = '<form action="" method="post">' +
+            '<fieldset>';
+
+    //генерируем html-код полей с именами и значениями из поступивших данных 
+    for (var i = 0; i < data.length; i++) {
+        html += drawRow(data[i]);
+    }
+
+    //часть формы после генерируемых полей
+    html += '<input type="hidden" name="action" value="platform_settings">' +
+        '<br>' +
+        '<input class="btn btn-primary" type="submit" value="Сохранить">' +
+        '</fieldset>' +
+    '</form>';
+    document.getElementById("core_settings_ajax").innerHTML=html;
+}
+
+//код из этой функции можно поместить прямо внутрь цикла, а функцию удалить
+function drawRow(rowData) {
+    return '<div class="control-group">' +
+        '<label class="control-label" for="'+rowData.param+'">'+rowData.param+'</label>' +
+        '<div class="controls">' +
+            '<input type="text" id="'+rowData.param+'" name="'+rowData.param+'" value="'+rowData.value+'"  required class="form-control input-lg">' +
+        '</div>' +
+    '</div>';
+}
+});
+
+// Core Log Modal
 $("#core_log").on("show.bs.modal", function(e) {
 $.ajax({type: "GET", url: "/api/1.0/platform/log", 
     dataType:"text", timeout:30000, async:true,
@@ -295,10 +318,8 @@ $.ajax({type: "GET", url: "/api/1.0/platform/log",
         document.getElementById("core_log_ajax").innerHTML=a;
     }  
 })});
-</script>
 
-<!-- Cam Log Modal -->
-<script>
+// Cam Log Modal
 $("#cam_log").on("show.bs.modal", function(e) {
 $.ajax({type: "GET", url: "/api/1.0/camera/log", 
     dataType:"text", timeout:30000, async:true,
