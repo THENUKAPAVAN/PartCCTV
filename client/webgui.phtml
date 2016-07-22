@@ -69,28 +69,11 @@ webgui.phtml
 				<a class="btn-menu btn btn-lg btn-danger"  >Перезагрузка платформы</a>			
 			</div>
 		</div>
-		<div class="row">
-			<div class="col-md-12">
-				<hr>
-			</div>
-<?php
-/* if (isset($errors)) {
-	foreach ($errors as $key => $value) {
-		echo'			
-			<div class="col-md-12">
-				<div class="alert alert-dismissable alert-danger">
-					<b>Критическая ошибка '.$key.' :</b>
-					<br>
-					'.$value.'
-				</div>
-			</div>		
-		';
-	}
-	unset($key);
-	unset($value);
-} */
-?>			
-		</div>
+        
+        <div class="col-md-12">
+            <hr>
+        </div>
+
 	</div>
 	<div class="container">
 		<div class="row">
@@ -255,7 +238,7 @@ webgui.phtml
         <h4 class="modal-title" id="core_users">Пользователи</h4>
       </div>
       <div class="modal-body">
-		<pre id="core_log_ajax"></pre>
+        <!-- TBD -->
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
