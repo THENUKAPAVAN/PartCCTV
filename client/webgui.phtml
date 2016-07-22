@@ -59,8 +59,14 @@ webgui.phtml
 		</div>
 		<div class="row">
 			<div class="col-md-12">
+				<a class="btn-menu btn btn-lg btn-success" data-toggle="modal" data-target="#cam_new">Добавить новую камеру</a>
+				<a class="btn-menu btn btn-lg btn-info"    data-toggle="modal" data-target="#core_settings">Настройки платформы</a>
+				<a class="btn-menu btn btn-lg btn-info"    data-toggle="modal" data-target="#core_users">Пользователи</a>					
+				<a class="btn-menu btn btn-lg btn-default" data-toggle="modal" data-target="#core_log">Лог платформы</a>
+				<a class="btn-menu btn btn-lg btn-default" data-toggle="modal" data-target="#cam_log">Лог камер</a>			
 
-				
+				<a class="btn-menu btn btn-lg btn-warning" >Частичная перезагрузка платформы</a>	                
+				<a class="btn-menu btn btn-lg btn-danger"  >Перезагрузка платформы</a>			
 			</div>
 		</div>
 		<div class="row">
@@ -117,10 +123,12 @@ webgui.phtml
 </div>
 
 <!-- New Cam Modal -->
+<div class="modal fade" id="cam_new" tabindex="-1" role="dialog" aria-labelledby="cam_new">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="cam_new">Новая камера</h4>
       </div>
       <div class="modal-body">
 		<form action="" method="post">
@@ -203,10 +211,12 @@ webgui.phtml
 </div>
 
 <!-- Settings Modal -->
+<div class="modal fade" id="core_settings" tabindex="-1" role="dialog" aria-labelledby="core_settings">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="core_settings">Настройки платформы</h4>
       </div>
       <div class="modal-body">
 		<form action="" method="post">
@@ -231,6 +241,24 @@ webgui.phtml
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Users Modal -->
+<div class="modal fade" id="core_users" tabindex="-1" role="dialog" aria-labelledby="core_users">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="core_users">Пользователи</h4>
+      </div>
+      <div class="modal-body">
+		<pre id="core_log_ajax"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
       </div>
     </div>
   </div>
