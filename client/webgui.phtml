@@ -1,9 +1,9 @@
-<!-- // ------
-// PartCCTV WEB GUI
-// webgui.phtml
-// (c) 2016 m1ron0xFF
-// @license: CC BY-NC-SA 4.0
-// ------ -->
+<!--
+PartCCTV WEB GUI
+webgui.phtml
+(c) 2016 m1ron0xFF
+@license: CC BY-NC-SA 4.0
+-->
 <html>
 <head>
 <meta charset="utf-8">
@@ -16,6 +16,13 @@
 
 <script src="https://yastatic.net/jquery/2.2.3/jquery.min.js"></script>
 <script src="https://yastatic.net/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+<style>
+.btn-menu{
+   margin-top: 4px;
+}
+</style>
+
 </head>
 <body>
 
@@ -52,14 +59,6 @@
 		</div>
 		<div class="row">
 			<div class="col-md-12">
-				<a class="btn btn-lg btn-success" data-toggle="modal" data-target="#newcam">Добавить новую камеру</a>
-				<a class="btn btn-lg btn-info"    data-toggle="modal" data-target="#settings">Настройки платформы</a>
-				<a class="btn btn-lg btn-info"    data-toggle="modal" data-target="#cam_log">Пользователи</a>					
-				<a class="btn btn-lg btn-default" data-toggle="modal" data-target="#core_log">Лог платформы</a>
-				<a class="btn btn-lg btn-default" data-toggle="modal" data-target="#cam_log">Лог камер</a>			
-				
-				<a class="btn btn-lg btn-warning" >Частичная перезагрузка платформы</a>				
-				<a class="btn btn-lg btn-danger"  >Полная перезагрузка платформы</a>			
 
 				
 			</div>
@@ -118,12 +117,10 @@
 </div>
 
 <!-- New Cam Modal -->
-<div class="modal fade" id="newcam" tabindex="-1" role="dialog" aria-labelledby="newcam">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title" id="newcam">Новая камера</h4>
       </div>
       <div class="modal-body">
 		<form action="" method="post">
@@ -206,12 +203,10 @@
 </div>
 
 <!-- Settings Modal -->
-<div class="modal fade" id="settings" tabindex="-1" role="dialog" aria-labelledby="settings">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title" id="settings">Настройки платформы</h4>
       </div>
       <div class="modal-body">
 		<form action="" method="post">
