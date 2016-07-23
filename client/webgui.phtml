@@ -24,8 +24,8 @@ webgui.phtml
 </style>
 
 </head>
-<body>
 
+<body>
 <div class="navbar navbar-default navbar-static-top">
 	<div class="container">
 		<div class="navbar-header">
@@ -36,6 +36,7 @@ webgui.phtml
 			<span class="icon-bar"></span>
 			</button>
 			<a class="navbar-brand" href="/"><span>PartCCTV WEB GUI</span></a>
+            <p class="navbar-text" id="core_pid"></p>
 		</div>
 
 		<div class="collapse navbar-collapse" id="navbar-ex-collapse">
@@ -52,8 +53,7 @@ webgui.phtml
 	<div class="container">
 		<div class="row">
 			<div class="col-md-12">
-				<div class="progress progress-striped">
-					<div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" style="width: <?=(100-$status['free_space']/$status['total_space']*100)?>%;">На <?=$status['path']?> свободно <?=$status['free_space']?>Гб из <?=$status['total_space']?>Гб</div>
+				<div class="progress progress-striped" id="core_status_ajax">
 				</div>
 			</div>
 		</div>
@@ -76,31 +76,7 @@ webgui.phtml
 
 	</div>
 	<div class="container">
-		<div class="row">
-		
-<?php
-/* 			while ($cam = $cam_list->fetch_assoc()) {
-				if ($cam['enabled'] == 0) {$cam_status = '
-						<div class="alert alert-dismissable alert-danger">
-							<b>Камера отключена!</b>
-				</div>';} else {$cam_status = '';}
-				echo'			<div class="col-md-12">
-				<div class="panel panel-success">
-					<div class="panel-heading">
-						<h6 class="panel-title text-warning"><b>'.$cam["title"].' (id'.$cam["id"].')</b></h6>
-					</div>
-					<div class="panel-body">					
-'.$cam_status.'
-						<div class="btn-group btn-group-lg">
-							<a id="'.$cam["id"].'_ajax" data-toggle="modal" data-target="#cam_settings" class="btn btn-warning">Настройки</a>
-							<a href="/archive/id'.$cam["id"].'" class="btn btn-primary">Архив</a>
-						</div>
-					</div>
-				</div>
-			</div>';
-			}
-			unset($cam); */
-?>
+		<div class="row" id="cam_list_ajax">
 		</div>
 	</div>
 </div>
@@ -265,14 +241,77 @@ webgui.phtml
 </div>
 
 <script>
+$(function() {
+// Progress Bar & Core Status
+$.ajax({
+    url: '/api/1.0/platform/status',
+    type: "get",
+    dataType: "json",
+    success: function(data) {
+        var pbar = '<div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" style="width: '+ (data.total_space - data.free_space)/data.total_space*100 +'%;">На '+data.path+' свободно '+data.free_space+'Гб из '+data.total_space+'Гб</div>';
+        document.getElementById("core_status_ajax").innerHTML=pbar;
+        document.getElementById("core_pid").innerHTML='Core PID: '+ data.core_pid;
+    }
+});
+
+// Cam List
+$.ajax({
+    url: '/api/1.0/camera/list',
+    type: "get",
+    dataType: "json",
+    success: function(data) {
+        drawCamList(data);
+    }
+});
+
+function drawCamList(data) {
+
+    var html = '';
+
+    for (var i = 0; i < data.length; i++) {
+        html += drawCamListRaw(data[i]);
+    }
+
+    document.getElementById("cam_list_ajax").innerHTML=html;
+}
+
+function drawCamListRaw(rawData) {
+
+    if (rawData.enabled==0) {
+        var error = '<div class="alert alert-warning">' +
+                        '<b>Камера отключена!</b>' +
+                    '</div>';
+    } else if (rawData.enabled==1 && !rawData.pid ) {
+        var error = '<div class="alert alert-danger">' +
+                        '<b>Воркер не запущен, запись не производится!</b>' +
+                    '</div>';    
+    } else {
+        var error = '';
+    }
+
+    return '<div class="col-md-12">' +
+        '<div class="panel panel-success">' +
+            '<div class="panel-heading">' +
+                '<h6 class="panel-title text-warning"><b>'+rawData.title+' (id'+rawData.id+')</b> <kbd>PID '+rawData.pid+'</kbd></h6>' +
+            '</div>' +
+            '<div class="panel-body">' +
+                error +
+                '<div class="btn-group btn-group-lg">' +
+                    '<a data-toggle="modal" data-target="#cam_settings" class="btn btn-warning">Настройки</a>' +
+                    '<a href="/archive/id'+rawData.id+'" class="btn btn-primary">Архив</a>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+    '</div>';          
+}
+
 // Core Settings Modal
-$("#core_settings").on("show.bs.modal", function(e) {
+$("#core_settings").on("show.bs.modal", function() {
 $.ajax({
     url: '/api/1.0/platform/settings',
     type: "get",
     dataType: "json",
-    success: function(data, textStatus, jqXHR) {
-        // since we are using jQuery, you don't need to parse response
+    success: function(data) {
         drawSettingsModal(data);
     }
 });
@@ -284,7 +323,7 @@ function drawSettingsModal(data) {
 
     //генерируем html-код полей с именами и значениями из поступивших данных 
     for (var i = 0; i < data.length; i++) {
-        html += drawRow(data[i]);
+        html += drawSettingsRaw(data[i]);
     }
 
     //часть формы после генерируемых полей
@@ -296,20 +335,19 @@ function drawSettingsModal(data) {
     document.getElementById("core_settings_ajax").innerHTML=html;
 }
 
-//код из этой функции можно поместить прямо внутрь цикла, а функцию удалить
-function drawRow(rowData) {
+function drawSettingsRaw(rawData) {
     return '<div class="control-group">' +
-        '<label class="control-label" for="'+rowData.param+'">'+rowData.param+'</label>' +
+        '<label class="control-label" for="'+rawData.param+'">'+rawData.param+'</label>' +
         '<div class="controls">' +
-            '<input type="text" id="'+rowData.param+'" name="'+rowData.param+'" value="'+rowData.value+'"  required class="form-control input-lg">' +
+            '<input type="text" id="'+rawData.param+'" name="'+rawData.param+'" value="'+rawData.value+'"  required class="form-control input-lg">' +
         '</div>' +
     '</div>';
 }
 });
 
 // Core Log Modal
-$("#core_log").on("show.bs.modal", function(e) {
-$.ajax({type: "GET", url: "/api/1.0/platform/log", 
+$("#core_log").on("show.bs.modal", function() {
+$.ajax({type: "get", url: "/api/1.0/platform/log", 
     dataType:"text", timeout:30000, async:true,
     error: function(xhr) {
         console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
@@ -320,8 +358,8 @@ $.ajax({type: "GET", url: "/api/1.0/platform/log",
 })});
 
 // Cam Log Modal
-$("#cam_log").on("show.bs.modal", function(e) {
-$.ajax({type: "GET", url: "/api/1.0/camera/log", 
+$("#cam_log").on("show.bs.modal", function() {
+$.ajax({type: "get", url: "/api/1.0/camera/log", 
     dataType:"text", timeout:30000, async:true,
     error: function(xhr) {
         console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
@@ -330,6 +368,7 @@ $.ajax({type: "GET", url: "/api/1.0/camera/log",
         document.getElementById("cam_log_ajax").innerHTML=a;
     }  
 })});
+});
 </script>
 
 </body>
