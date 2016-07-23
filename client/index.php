@@ -24,7 +24,7 @@ $app['dbh'] = function () use ($app) {
 };
 
 // Declare a ZMQ service.
-$app['zmq'] = function () use ($app) {
+$app['zmq'] = function () {
     $ZMQRequester = new ZMQSocket(new ZMQContext(), ZMQ::SOCKET_REQ);
     $ZMQRequester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 1500);
     $ZMQRequester->connect("tcp://127.0.0.1:5555");
@@ -38,7 +38,7 @@ $app->get('/', function () use ($app) {
 $app->get('/web_gui/', function() { 
 
 	ob_start();
-	include 'webgui.phtml';
+	require_once 'webgui.phtml';
 	return ob_get_clean();
 
 }); 
@@ -48,11 +48,12 @@ $app->get('/api/1.0/platform/status', function () use ($app) {
 	$app['zmq']->send(json_encode(array (	'action' => 'core_status' )));
     $Response = $app['zmq']->recv();
     
-    if($Response === false) {
-        throw new Exception('Seems like PartCCTV Core is down!');
+    try{
+    	return new Response($Response, 200, ['Content-Type' => 'application/json']);    
     }
-
-	return new Response($Response, 200, ['Content-Type' => 'application/json']);
+    catch(UnexpectedValueException $e) {
+        return new Response('Seems like PartCCTV Core is down!', 500, ['Content-Type' => 'application/json']);            
+    } 
 
 });
 
@@ -61,7 +62,6 @@ $app->get('/api/1.0/platform/settings', function () use($app) {
 	$result = $app['dbh']->query("SELECT * FROM `cam_settings`");
     $result->setFetchMode(PDO::FETCH_ASSOC);
 	for ($set = array (); $row = $result->fetch(); $set[] = $row);
-	unset($row);
 
 	return $app->json($set);
 
@@ -72,19 +72,25 @@ $app->put('/api/1.0/platform/settings', function (Request $request) use($app) {
     
     if(empty($request->request)) {
 		$app->abort(400, '400 Bad Request');        
-    } else {
-
-        $STH = $app['dbh']->prepare("UPDATE `cam_settings` SET `value` = :value WHERE `cam_settings`.`param` = :param");
-        
-        foreach ($request->request as $key => $value) {
-            $STH->bindParam(':value', $value);
-            $STH->bindParam(':param', $key);
-            $STH->execute();
-        }
-
-        return new Response('OK', 200, ['Content-Type' => 'application/json']);
-
     }
+
+    $STH = $app['dbh']->prepare("UPDATE `cam_settings` SET `value` = :value WHERE `cam_settings`.`param` = :param");
+    
+    foreach ($request->request as $key => $value) {
+        $STH->bindParam(':value', $value);
+        $STH->bindParam(':param', $key);
+        $STH->execute();
+    }
+
+    // RestartIsRequired flag
+    try {
+        $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
+        return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
+    } 
+    catch(UnexpectedValueException $e) {
+        return new Response('Partially OK', 200, ['Content-Type' => 'application/json']);            
+    }        
+    
 });
 
 $app->get('/api/1.0/platform/log', function () use ($app) {
@@ -161,17 +167,12 @@ $app->post('/api/1.0/camera/new', function (Request $request) use($app) {
     // RestartIsRequired flag
     try {
         $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
-        $Response = $app['zmq']->recv();
-        
-        if($Response === false) {
-            throw new Exception('Seems like PartCCTV Core is down!');
-        }
-
-        return new Response($Response, 200, ['Content-Type' => 'application/json']);
+        return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
     } 
-    catch(Exception $e) {
-        return new Response('Partialy OK', 200, ['Content-Type' => 'application/json']);            
+    catch(UnexpectedValueException $e) {
+        return new Response('Partially OK', 200, ['Content-Type' => 'application/json']);            
     }
+    
 });
 
 $app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($app) {
@@ -180,44 +181,39 @@ $app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($
     // RestartIsRequired flag
     try {
         $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
-        $Response = $app['zmq']->recv();
-        
-        if($Response === false) {
-            throw new Exception('Seems like PartCCTV Core is down!');
-        }
-
-        return new Response($Response, 200, ['Content-Type' => 'application/json']);
+        return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
     } 
-    catch(Exception $e) {
-        return new Response('Partialy OK', 200, ['Content-Type' => 'application/json']);            
+    catch(UnexpectedValueException $e) {
+        return new Response('Partially OK', 200, ['Content-Type' => 'application/json']);            
     }
+    
 });
 
 $app->delete('/api/1.0/camera/{camera}', function ($camera) use($app) {
+    
     //TBD
     
     // RestartIsRequired flag
     try {
-        $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
-        $Response = $app['zmq']->recv();
-        
-        if($Response === false) {
-            throw new Exception('Seems like PartCCTV Core is down!');
-        }
-
-        return new Response($Response, 200, ['Content-Type' => 'application/json']);
+        $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));    
+        return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
     } 
-    catch(Exception $e) {
-        return new Response('Partialy OK', 200, ['Content-Type' => 'application/json']);            
+    catch(UnexpectedValueException $e) {
+        return new Response('Partially OK', 200, ['Content-Type' => 'application/json']);            
     }
+    
 });
 
 $app->get('/api/1.0/archive/list', function () use($app) {
+    
     //TBD
+    
 });
 
 $app->get('//api/1.0/archive/{camera}', function ($camera) use($app) {
+    
     //TBD
+    
 });
 
 $app->run(); 
