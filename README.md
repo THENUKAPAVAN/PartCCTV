@@ -14,18 +14,18 @@ PartCCTV, Yet Another CCTV App
   - Restore DB from .sql file (using `install/mysql.sql`, `install/postgre.sql` or converting it to another DB)
   - Configure `PartCCTV.ini` file
   - Run core: `php PartCCTV/server/starter.php` (TBD: systemd service)
-  - Set-up core from web_gui or API
+  - Set-up core with `web_gui` or `API`
   - That's all :)
   
 
 ## About
 
 ### Requirements
-  - Linux/FreeBSD/MacOSX ( except Windows because of pcntl_fork() )
-  - PHP 7.0 with PDO and ZeroMQ binding ( http://zeromq.org/bindings:php )
-  - ZeroMQ ( http://zeromq.org/area:download )
-  - PDO compatible DB (MySQL, Postgresql, SQlite, etc.)
-  - FFmpeg
+  - `Linux`/`FreeBSD`/`MacOSX` ( except `Windows` because of `pcntl_fork()` )
+  - `PHP 7.0` `CLI` and `FPM` with `PDO` and `ZeroMQ binding` ( http://zeromq.org/bindings:php )
+  - `ZeroMQ` ( http://zeromq.org/area:download )
+  - `PDO` compatible DB (MySQL, Postgresql, SQlite, etc.)
+  - `FFmpeg`
 
 ### Contributing
   - Fork it ( https://github.com/mironoff111/PartCCTV/fork )
