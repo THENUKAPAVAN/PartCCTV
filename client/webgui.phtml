@@ -92,7 +92,7 @@ webgui.phtml
       <div class="modal-body">
 		<form action="" method="post">
 		<fieldset>
-         
+        
             <div class="control-group">
               <label class="control-label" for="name">Название</label>
               <div class="controls">
@@ -106,9 +106,11 @@ webgui.phtml
                 <input type="text" id="source" name="source" required class="form-control input-lg">
               </div>
             </div>
+            
 		    <br>
-			<input type="hidden" name="action" value="new_cam">
+            
 			<input class="btn btn-primary" type="submit" value="Сохранить">
+            
 		</fieldset>
 		</form>
       </div>
@@ -247,10 +249,11 @@ $.ajax({
     url: '/api/1.0/platform/status',
     type: "get",
     dataType: "json",
+    cache: true,
     success: function(data) {
         var pbar = '<div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" style="width: '+ (data.total_space - data.free_space)/data.total_space*100 +'%;">На '+data.path+' свободно '+data.free_space+'Гб из '+data.total_space+'Гб</div>';
-        document.getElementById("core_status_ajax").innerHTML=pbar;
-        document.getElementById("core_pid").innerHTML='Core PID: '+ data.core_pid;
+        $('#core_status_ajax').html(pbar);
+        $('#core_pid').html('Core PID: '+ data.core_pid);
     }
 });
 
@@ -259,6 +262,7 @@ $.ajax({
     url: '/api/1.0/camera/list',
     type: "get",
     dataType: "json",
+    cache: true,
     success: function(data) {
         drawCamList(data);
     }
@@ -272,7 +276,7 @@ function drawCamList(data) {
         html += drawCamListRaw(data[i]);
     }
 
-    document.getElementById("cam_list_ajax").innerHTML=html;
+    $('#cam_list_ajax').html(html);
 }
 
 function drawCamListRaw(rawData) {
@@ -311,6 +315,7 @@ $.ajax({
     url: '/api/1.0/platform/settings',
     type: "get",
     dataType: "json",
+    cache: true,
     success: function(data) {
         drawSettingsModal(data);
     }
@@ -332,7 +337,8 @@ function drawSettingsModal(data) {
         '<input class="btn btn-primary" type="submit" value="Сохранить">' +
         '</fieldset>' +
     '</form>';
-    document.getElementById("core_settings_ajax").innerHTML=html;
+    
+    $('#core_settings_ajax').html(html);
 }
 
 function drawSettingsRaw(rawData) {
@@ -347,25 +353,31 @@ function drawSettingsRaw(rawData) {
 
 // Core Log Modal
 $("#core_log").on("show.bs.modal", function() {
-$.ajax({type: "get", url: "/api/1.0/platform/log", 
-    dataType:"text", timeout:30000, async:true,
+$.ajax({
+    type: "get", 
+    url: "/api/1.0/platform/log", 
+    dataType:"text", 
+    cache: true,
     error: function(xhr) {
         console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
     },
     success: function(a) {
-        document.getElementById("core_log_ajax").innerHTML=a;
+        $('#core_log_ajax').html(a);
     }  
 })});
 
 // Cam Log Modal
 $("#cam_log").on("show.bs.modal", function() {
-$.ajax({type: "get", url: "/api/1.0/camera/log", 
-    dataType:"text", timeout:30000, async:true,
+$.ajax({
+    type: "get", 
+    url: "/api/1.0/camera/log", 
+    dataType:"text", 
+    cache: true,
     error: function(xhr) {
         console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
     },
     success: function(a) {
-        document.getElementById("cam_log_ajax").innerHTML=a;
+        $('#cam_log_ajax').html(a);
     }  
 })});
 });
