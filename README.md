@@ -9,7 +9,14 @@ PartCCTV, Yet Another CCTV App
   - Made with love :)  
 
 ## Installation
-T.B.D.
+  - `git clone`
+  - Configure `nginx` (using `install/nginx.conf` as example) or configure `Apache` (no example config: TBD)
+  - Restore DB from .sql file (using `install/mysql.sql`, `install/postgre.sql` or converting it to another DB)
+  - Configure `PartCCTV.ini` file
+  - Run core: `php PartCCTV/server/starter.php` (TBD: systemd service)
+  - Set-up core from web_gui or API
+  - That's all :)
+  
 
 ## About
 
