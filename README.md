@@ -9,16 +9,19 @@ PartCCTV, Yet Another CCTV App
   - Made with love :)  
 
 ## Installation
-  - `git clone`
+  - Clone it: `git clone https://github.com/mironoff111/PartCCTV.git`
+  - Install all dependencies: `php composer.phar install`
   - Configure `nginx` (using `install/nginx.conf` as example) or configure `Apache` (no example config: TBD)
   - Restore DB from .sql file (using `install/mysql.sql`, `install/postgre.sql` or converting it to another DB)
   - Configure `PartCCTV.ini` file
-  - Run core: `php PartCCTV/server/starter.php` (TBD: systemd service)
+  - Run core: `php server/starter.php` (TBD: systemd service)
   - Set-up core with `web_gui` or `API`
   - That's all :)
   
 
 ## About
+
+![Block-scheme](https://raw.githubusercontent.com/mironoff111/PartCCTV/gh-pages/1111.png)
 
 ### Requirements
   - `Linux`/`FreeBSD`/`MacOSX` ( except `Windows` because of `pcntl_fork()` )
@@ -28,10 +31,10 @@ PartCCTV, Yet Another CCTV App
   - `FFmpeg`
 
 ### Contributing
-  - Fork it ( https://github.com/mironoff111/PartCCTV/fork )
-  - Create your feature branch (`git checkout -b my-new-feature`)
-  - Commit your changes (`git commit -am 'Add some feature'`)
-  - Push to the branch (`git push origin my-new-feature`)
+  - Fork it: https://github.com/mironoff111/PartCCTV/fork
+  - Create your feature branch: `git checkout -b my-new-feature`
+  - Commit your changes: `git commit -am 'Add some feature'`
+  - Push to the branch: `git push origin my-new-feature`
   - Create a new Pull Request
 
 ### License
