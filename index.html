@@ -37,30 +37,52 @@
 <h2>
 <a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h2>
 
-<p>T.B.D.</p>
+<ul>
+<li>Clone it: <code>git clone https://github.com/mironoff111/PartCCTV.git</code>
+</li>
+<li>Install all dependencies: <code>php composer.phar install</code>
+</li>
+<li>Configure <code>nginx</code> (using <code>install/nginx.conf</code> as example) or configure <code>Apache</code> (no example config: TBD)</li>
+<li>Restore DB from .sql file (using <code>install/mysql.sql</code>, <code>install/postgre.sql</code> or converting it to another DB)</li>
+<li>Configure <code>PartCCTV.ini</code> file</li>
+<li>Run core: <code>php server/starter.php</code> (TBD: systemd service)</li>
+<li>Set-up core with <code>web_gui</code> or <code>API</code>
+</li>
+<li>That's all :)</li>
+</ul>
 
 <h2>
 <a id="about" class="anchor" href="#about" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>About</h2>
+
+<p><img src="https://raw.githubusercontent.com/mironoff111/PartCCTV/gh-pages/1111.png" alt="Block-scheme"></p>
 
 <h3>
 <a id="requirements" class="anchor" href="#requirements" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Requirements</h3>
 
 <ul>
-<li>Linux/FreeBSD/MacOSX ( except Windows because of pcntl_fork() )</li>
-<li>PHP 7.0 with PDO and ZeroMQ binding ( <a href="http://zeromq.org/bindings:php">http://zeromq.org/bindings:php</a> )</li>
-<li>ZeroMQ ( <a href="http://zeromq.org/area:download">http://zeromq.org/area:download</a> )</li>
-<li>PDO compatible DB (MySQL, Postgresql, SQlite, etc.)</li>
-<li>FFmpeg</li>
+<li>
+<code>Linux</code>/<code>FreeBSD</code>/<code>MacOSX</code> ( except <code>Windows</code> because of <code>pcntl_fork()</code> )</li>
+<li>
+<code>PHP 7.0</code> <code>CLI</code> and <code>FPM</code> with <code>PDO</code> and <code>ZeroMQ binding</code> ( <a href="http://zeromq.org/bindings:php">http://zeromq.org/bindings:php</a> )</li>
+<li>
+<code>ZeroMQ</code> ( <a href="http://zeromq.org/area:download">http://zeromq.org/area:download</a> )</li>
+<li>
+<code>PDO</code> compatible DB (MySQL, Postgresql, SQlite, etc.)</li>
+<li><code>FFmpeg</code></li>
 </ul>
 
 <h3>
 <a id="contributing" class="anchor" href="#contributing" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Contributing</h3>
 
 <ul>
-<li>Fork it ( <a href="https://github.com/mironoff111/PartCCTV/fork">https://github.com/mironoff111/PartCCTV/fork</a> )</li>
-<li>Create your feature branch (<code>git checkout -b my-new-feature</code>)</li>
-<li>Commit your changes (<code>git commit -am 'Add some feature'</code>)</li>
-<li>Push to the branch (<code>git push origin my-new-feature</code>)</li>
+<li>Fork it: <a href="https://github.com/mironoff111/PartCCTV/fork">https://github.com/mironoff111/PartCCTV/fork</a>
+</li>
+<li>Create your feature branch: <code>git checkout -b my-new-feature</code>
+</li>
+<li>Commit your changes: <code>git commit -am 'Add some feature'</code>
+</li>
+<li>Push to the branch: <code>git push origin my-new-feature</code>
+</li>
 <li>Create a new Pull Request</li>
 </ul>
 
