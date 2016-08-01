@@ -7,6 +7,18 @@ PartCCTV, Yet Another CCTV App
   - Lightweight
   - Open Source
   - Made with love :)  
+  
+### To Do List  
+- [ ] WEB-GUI (in progress)
+- [ ] Better FFmpeg handler
+- [ ] Authentication, Authorization, Account Management & Audit Logging
+- [ ] Live Streaming from WEB-GUI (via second stream or full stream as fallback)
+- [ ] Webcam & Analog Support (via V4L)
+- [ ] Easy Install Script
+- [ ] Smart Telegram Bot (not only logging)
+- [ ] Documentation
+- [ ] Native :inux & Windows Client
+- [ ] Neural Network integraton 
 
 ## Installation
   - Clone it: `git clone https://github.com/mironoff111/PartCCTV.git`
