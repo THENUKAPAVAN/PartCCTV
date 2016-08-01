@@ -16,6 +16,7 @@ PartCCTV, Yet Another CCTV App
 - [ ] Webcam & Analog Support (via V4L)
 - [ ] Easy Install Script
 - [ ] Smart Telegram Bot (not only logging)
+- [ ] Localization
 - [ ] Documentation
 - [ ] Native :inux & Windows Client
 - [ ] Neural Network integraton 
