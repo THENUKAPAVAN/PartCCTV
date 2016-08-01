@@ -153,6 +153,20 @@ $app->get('/api/1.0/camera/list', function () use($app) {
     
 });
 
+$app->get('/api/1.0/camera/{camera}/', function ($camera) use($app) {
+
+	$result = $app['dbh']->prepare("SELECT * FROM `cam_list` WHERE `id`= ?");
+	$result->bindParam(1, $camera);
+	$result->execute();
+    $result->setFetchMode(PDO::FETCH_ASSOC);
+	for ($ar = array (); $row = $result->fetch(); $ar[] = $row);
+
+
+
+	return $app->json($ar);
+    
+});
+
 $app->get('/api/1.0/camera/log', function () use ($app) {
     
 	$app['zmq']->send(json_encode(array (	'action' => 'cam_log' )));
@@ -175,7 +189,7 @@ $app->post('/api/1.0/camera/new', function (Request $request) use($app) {
     
 });
 
-$app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($app) {
+$app->put('/api/1.0/camera/{camera}/', function (Request $request, $camera) use($app) {
     //TBD
     
     // RestartIsRequired flag
@@ -189,7 +203,7 @@ $app->put('/api/1.0/camera/{camera}', function (Request $request, $camera) use($
     
 });
 
-$app->delete('/api/1.0/camera/{camera}', function ($camera) use($app) {
+$app->delete('/api/1.0/camera/{camera}/', function ($camera) use($app) {
     
     //TBD
     
@@ -210,7 +224,7 @@ $app->get('/api/1.0/archive/list', function () use($app) {
     
 });
 
-$app->get('//api/1.0/archive/{camera}', function ($camera) use($app) {
+$app->get('//api/1.0/archive/{camera}/', function ($camera) use($app) {
     
     //TBD
     

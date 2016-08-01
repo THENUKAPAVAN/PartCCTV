@@ -14,12 +14,52 @@ webgui.phtml
 <!-- Optional theme -->
 <link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
 
+<link href="http://vjs.zencdn.net/5.10.7/video-js.css" rel="stylesheet">
+<script src="http://vjs.zencdn.net/5.10.7/video.js"></script>
+
 <script src="https://yastatic.net/jquery/2.2.3/jquery.min.js"></script>
 <script src="https://yastatic.net/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
 <style>
 .btn-menu{
    margin-top: 4px;
+}
+
+/***** Stream Modal *****/
+
+.streammodal-backdrop.in {
+	filter: alpha(opacity=7);
+	opacity: 0.7;
+}
+
+.streammodal-content {
+	background: none;
+	border: 0;
+	-moz-border-radius: 0; -webkit-border-radius: 0; border-radius: 0;
+	-moz-box-shadow: none; -webkit-box-shadow: none; box-shadow: none;
+}
+
+.streammodal-body {
+	padding: 0 25px 25px 25px;
+}
+
+.streammodal-header {
+	padding: 25px 25px 15px 25px;
+	text-align: right;
+}
+
+.streammodal-header, .streammodal-footer {
+	border: 0;
+}
+
+.streammodal-header .close {
+	float: none;
+	margin: 0;
+	font-size: 36px;
+	color: #fff;
+	font-weight: 300;
+	text-shadow: none;
+	opacity: 1;
 }
 </style>
 
@@ -41,7 +81,6 @@ webgui.phtml
 
 		<div class="collapse navbar-collapse" id="navbar-ex-collapse">
 			<ul class="nav navbar-nav navbar-right">
-				<li><a href="/archive/">Архив</a></li>
 				<li><a href="https://github.com/mironoff111/PartCCTV/wiki">Документация</a></li>
 				<li><a href="#">Выход</a></li>					
 			</ul>
@@ -53,7 +92,7 @@ webgui.phtml
 	<div class="container">
 		<div class="row">
 			<div class="col-md-12">
-				<div class="progress progress-striped" id="core_status_ajax">
+				<div class="progress" id="core_status_ajax">
 				</div>
 			</div>
 		</div>
@@ -63,8 +102,7 @@ webgui.phtml
 				<a class="btn-menu btn btn-lg btn-info"    data-toggle="modal" data-target="#core_settings">Настройки платформы</a>
 				<a class="btn-menu btn btn-lg btn-info"    data-toggle="modal" data-target="#core_users">Пользователи</a>					
 				<a class="btn-menu btn btn-lg btn-default" data-toggle="modal" data-target="#core_log">Лог платформы</a>
-				<a class="btn-menu btn btn-lg btn-default" data-toggle="modal" data-target="#cam_log">Лог камер</a>			
-
+				<a class="btn-menu btn btn-lg btn-default" data-toggle="modal" data-target="#cam_log">Лог камер</a>					
 				<a class="btn-menu btn btn-lg btn-warning" >Частичная перезагрузка платформы</a>	                
 				<a class="btn-menu btn btn-lg btn-danger"  >Перезагрузка платформы</a>			
 			</div>
@@ -129,33 +167,33 @@ webgui.phtml
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         <h4 class="modal-title" id="cam_settings">Настройки камеры</h4>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" id="cam_settings_ajax">
 		<form action="" method="post">
 		<fieldset>
             <div class="control-group">
               <label class="control-label" for="id">ID</label>
               <div class="controls">
-                <input type="text" id="id" name="id" required class="form-control input-lg">
+                <input type="text" id="cam_settings_id" name="id" required class="form-control input-lg">
               </div>
             </div>
          
             <div class="control-group">
               <label class="control-label" for="name">Название</label>
               <div class="controls">
-                <input type="text" id="name" name="name" required class="form-control input-lg">
+                <input type="text" id="cam_settings_name" name="name" required class="form-control input-lg">
               </div>
             </div>
 		
             <div class="control-group">
               <label class="control-label" for="source">Источник</label>
               <div class="controls">
-                <input type="text" id="source" name="source" required class="form-control input-lg">
+                <input type="text" id="cam_settings_source" name="source" required class="form-control input-lg">
               </div>
             </div>
 		
 			<div class="checkbox">
 				<label>
-				<input type="checkbox"> Камера включена
+				<input id="cam_settings_enabled" type="checkbox"> Камера включена
 				</label>
 			</div>
 		
@@ -242,17 +280,65 @@ webgui.phtml
   </div>
 </div>
 
+<!-- Cam Stream Modal -->
+<!-- <div class="streammodal modal fade" id="cam_stream" tabindex="-1" role="dialog" aria-labelledby="cam_stream-label">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="streammodal-content modal-content">
+			<div class="streammodal-header modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="streammodal-body modal-body">
+				<div class="modal-video">
+					<div class="embed-responsive embed-responsive-16by9">
+					  <video id="video" class="video-js vjs-default-skin vjs-16-9 vjs-big-play-centered" controls preload="none" data-setup="{}"  width="720" height="576">
+						<source id="stream-source" src="rtmp://cp67126.edgefcs.net/ondemand/&mp4:mediapm/ovp/content/test/video/spacealonehd_sounas_640_300.mp4" type='rtmp/mp4'>
+						<p class="vjs-no-js">
+						  To view this video please enable JavaScript, and consider upgrading to a web browser that
+						  <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+						</p>
+					  </video>					
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div> -->
+
 <script>
 $(function() {
+//Cam Settings Modal
+$(document).on("click", ".open-CamSettings", function () {
+    var camId = $(this).data('id');
+	$.ajax({
+		url: '/api/1.0/camera/'+camId+'/',
+		type: "get",
+		dataType: "json",
+		error: function(xhr) {
+			console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+		},
+		success: function(data) {
+			$('#cam_settings_id').val(data[0].id);
+			$('#cam_settings_name').val(data[0].title);
+			$('#cam_settings_source').val(data[0].source);
+			if(data[0].enabled==1) {
+				$('#cam_settings_enabled').prop('checked', true);
+			}		
+		}
+	});
+});
+	
 // Progress Bar & Core Status
 $.ajax({
     url: '/api/1.0/platform/status',
     type: "get",
     dataType: "json",
-    cache: true,
+    error: function(xhr) {
+        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+    },	
     success: function(data) {
-        var pbar = '<div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" style="width: '+ (data.total_space - data.free_space)/data.total_space*100 +'%;">На '+data.path+' свободно '+data.free_space+'Гб из '+data.total_space+'Гб</div>';
-        $('#core_status_ajax').html(pbar);
+        $('#core_status_ajax').html('<div class="progress-bar progress-bar-success" role="progressbar" style="width: '+ (data.total_space - data.free_space)/data.total_space*100 +'%;">На '+data.path+' свободно '+data.free_space+'Гб из '+data.total_space+'Гб</div>');
         $('#core_pid').html('Core PID: '+ data.core_pid);
     }
 });
@@ -262,7 +348,9 @@ $.ajax({
     url: '/api/1.0/camera/list',
     type: "get",
     dataType: "json",
-    cache: true,
+    error: function(xhr) {
+        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+    },	
     success: function(data) {
         drawCamList(data);
     }
@@ -296,13 +384,14 @@ function drawCamListRaw(rawData) {
     return '<div class="col-md-12">' +
         '<div class="panel panel-success">' +
             '<div class="panel-heading">' +
-                '<h6 class="panel-title text-warning"><b>'+rawData.title+' (id'+rawData.id+')</b> <kbd>PID '+rawData.pid+'</kbd></h6>' +
+                '<h6 class="panel-title text-warning"><b>'+rawData.title+'</b> <kbd>id'+rawData.id+'</kbd> <kbd>PID '+rawData.pid+'</kbd></h6>' +
             '</div>' +
             '<div class="panel-body">' +
                 error +
                 '<div class="btn-group btn-group-lg">' +
-                    '<a data-toggle="modal" data-target="#cam_settings" class="btn btn-warning">Настройки</a>' +
-                    '<a href="/archive/id'+rawData.id+'" class="btn btn-primary">Архив</a>' +
+                    '<a data-toggle="modal" data-target="#cam_stream" data-source="'+rawData.source+'" class="btn btn-success"><span class="glyphicon glyphicon-play" aria-hidden="true"></span> Прямой эфир</a>' +				
+                    '<a href="/archive/id'+rawData.id+'" class="btn btn-primary">Архив</a>' +				
+                    '<a data-toggle="modal" data-target="#cam_settings" data-id="'+rawData.id+'" class="open-CamSettings btn btn-warning">Настройки</a>' +
                 '</div>' +
             '</div>' +
         '</div>' +
@@ -315,7 +404,9 @@ $.ajax({
     url: '/api/1.0/platform/settings',
     type: "get",
     dataType: "json",
-    cache: true,
+    error: function(xhr) {
+        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+    },	
     success: function(data) {
         drawSettingsModal(data);
     }
@@ -357,7 +448,6 @@ $.ajax({
     type: "get", 
     url: "/api/1.0/platform/log", 
     dataType:"text", 
-    cache: true,
     error: function(xhr) {
         console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
     },
@@ -372,7 +462,6 @@ $.ajax({
     type: "get", 
     url: "/api/1.0/camera/log", 
     dataType:"text", 
-    cache: true,
     error: function(xhr) {
         console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
     },
