@@ -5,29 +5,22 @@
 // @license: CC BY-NC-SA 4.0
 // ------
 
-$errors = array();
+class PartCCTVCheckException extends Exception {};
 
-if (version_compare(PHP_VERSION, '7.0.0') < 0) {
-    $errors[] = 'Неподерживаемая версия PHP: ' . PHP_VERSION . PHP_EOL;
-}
-
-if (!extension_loaded('pdo')) {
-   $errors[] = 'Отсутствует расширение PDO' . PHP_EOL;
-}
-
-if (!extension_loaded('zmq')) {
-    $errors[] = 'Отсутствует расширение ZeroMQ (zmq)' . PHP_EOL;
-}
-
-if (!empty($errors)) {
-    $errors[] = 'Аварийное завершение!' . PHP_EOL;	
-	foreach ($errors as $error) {
-		echo $error;
+try {
+	if (version_compare(PHP_VERSION, '7.0.0') < 0) {
+		throw new PartCCTVCheckException('Неподерживаемая версия PHP: ' . PHP_VERSION);
 	}
-	exit;
+	if (!extension_loaded('pdo')) {
+	   throw new PartCCTVCheckException('Отсутствует PHP расширение PDO');
+	}
+	if (!extension_loaded('zmq')) {
+		throw new PartCCTVCheckException('Отсутствует PHP расширение ZeroMQ (zmq)');
+	}
+} catch (PartCCTVCheckException $e) {
+	echo "PartCCTV start check failed: ".$e->getMessage();
+	exit(1);
 }
-
-unset ($errors);
 
 // Создаем дочерний процесс
 // весь код после pcntl_fork() будет выполняться двумя процессами: родительским и дочерним
@@ -41,7 +34,7 @@ if ($child_pid) {
 // Делаем основным процессом дочерний.
 posix_setsid();
 
-ini_set('error_log',__DIR__.'/php_errors.log');
+ini_set('error_log',__DIR__.'/../php_errors.log');
 fclose(STDIN);
 fclose(STDOUT);
 fclose(STDERR);

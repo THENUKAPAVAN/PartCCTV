@@ -68,7 +68,7 @@ class PartCCTVCore {
         }
         catch(PDOException $e) {  
 			$this->Logger->EMERGENCY('Ошибка соединения с БД : '.$e->getMessage());
-			exit();            
+			exit(1);            
         }        
             		
 		$CoreSettings_raw = $DBH->query("SELECT * FROM cam_settings");
@@ -81,7 +81,7 @@ class PartCCTVCore {
 		
 		if (empty($this->CoreSettings['segment_time_min'])) {
 			$this->Logger->EMERGENCY('segment_time_min не может быть равен нулю!!! Аварийное завершение.');
-			exit;
+			exit(1);
 		}
 		
 		$CamSettings_raw = $DBH->query("SELECT id FROM cam_list WHERE enabled = 1");
@@ -235,11 +235,12 @@ class PartCCTVCore {
 				
 				if (count($this->WorkerPIDs) === 0) {
 					$this->Logger->INFO('Завершение работы ядра платформы');
-					exit;
+					exit(0);
 				} elseif (time() - $shutdown_time > 60) {
 					// Хьюстон, у нас проблема, прошло больше минуты, а вырубились не все дочерние процессы
 					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все воркеры завершены!');
 					exec('killall -s9 php');
+					exit(1);
 				}
 			}
 		}
@@ -282,7 +283,7 @@ class PartCCTVCore {
 				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
 				if($ZMQRequester->recv()) {
 					$this->CamLogger->debug("Завершается воркер id".$id." с PID ".getmypid());
-					exit;
+					exit(0);
 				} 	
 
 				sleep($time_to_sleep);				
