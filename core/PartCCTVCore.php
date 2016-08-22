@@ -71,7 +71,7 @@ class PartCCTVCore {
 			exit(1);            
         }        
             		
-		$CoreSettings_raw = $DBH->query("SELECT * FROM cam_settings");
+		$CoreSettings_raw = $DBH->query("SELECT * FROM core_settings");
         $CoreSettings_raw->setFetchMode(PDO::FETCH_ASSOC);  
 		while ($row = $CoreSettings_raw->fetch()) {
 			$this->CoreSettings[$row['param']] = $row['value'];
@@ -268,16 +268,40 @@ class PartCCTVCore {
 			$ZMQRequester->connect("tcp://localhost:5555");
 			$ZMQRequester->send(json_encode(array (	'action' => 'worker_info',	'id' => $id	)));
 			$worker_info = $ZMQRequester->recv();
-			$source = $worker_info;
 			$this->CamLogger->info("Запущен воркер id".$id." с PID ".getmypid());
 			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);		
 			$attempts = 0;
 			$time_to_sleep = 1;
 			$time_of_latest_major_fail = time();
 			
+			$Arr1 = array('%SOURCE%', '%SEGTIME_MIN%', '%SEGTIME_SEC%', '%REC_PATH%', '%CAM_ID%');
+			$Arr2 = array($worker_info, $this->CoreSettings["segment_time_min"], $this->CoreSettings["segment_time_min"]*60, $this->CoreSettings["path"], $id);
+			switch($this->CoreSettings["default_handler"]) {
+				
+				case 'ffmpeg':
+					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings["ffmpeg_bin"]);
+					break;
+				
+				case 'motion':
+					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings["motion_bin"]);
+					break;
+				
+				case 'custom':
+					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings["custom_bin"]);
+					break;
+				
+				default:
+					$this->CamLogger->WARNING("Unknown Default Handler ".$this->CoreSettings["default_handler"].", using ffmpeg");
+					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings["ffmpeg_bin"]);
+					break;
+							
+			}	
+			unset($Arr1, $Arr2);
+			$this->CamLogger->debug("Bin_Path: ".$Bin_Path);
+			
 			WHILE(TRUE) {
 
-				exec('ffmpeg -hide_banner -loglevel error -i "'.$source.'" -c copy -map 0 -f segment -segment_time '. $this->CoreSettings["segment_time_min"]*60 .' -segment_atclocktime 1 -segment_format mkv -strftime 1 "'.$this->CoreSettings["path"].'/id'.$id.'/%Y-%m-%d_%H-%M-%S.mkv" 1> log_id'.$id.'.txt 2>&1');
+				exec($Bin_Path);
 				
 				// А может нам пора выключиться?
 				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
@@ -297,7 +321,7 @@ class PartCCTVCore {
 				} else {
 					// Хьюстон, у нас проблема
 					
-					// Много спать не к чему
+					// Много спать ни к чему
 					if($time_to_sleep >= 600) {
 						$time_to_sleep = 1;
 					} else {
@@ -305,7 +329,7 @@ class PartCCTVCore {
 					}
 
 					// 3 неудачи
-					if($attempts > 3) {
+					if($attempts >= 3) {
 						$this->CamLogger->CRITICAL('Не удалось восстановить запись с камеры id'.$id.' в течение последних 3 попыток!');
 						$attempts = 0;
 					} else {

@@ -59,7 +59,7 @@ $app->get('/api/1.0/platform/status', function () use ($app) {
 
 $app->get('/api/1.0/platform/settings', function () use($app) {
 
-	$result = $app['dbh']->query("SELECT * FROM `cam_settings`");
+	$result = $app['dbh']->query("SELECT * FROM `core_settings`");
     $result->setFetchMode(PDO::FETCH_ASSOC);
 	for ($set = array (); $row = $result->fetch(); $set[] = $row);
 
@@ -69,12 +69,14 @@ $app->get('/api/1.0/platform/settings', function () use($app) {
 
 // To Be Tested
 $app->put('/api/1.0/platform/settings', function (Request $request) use($app) {
+	
+	return $request;
     
     if(empty($request->request)) {
 		$app->abort(400, '400 Bad Request');        
     }
 
-    $STH = $app['dbh']->prepare("UPDATE `cam_settings` SET `value` = :value WHERE `cam_settings`.`param` = :param");
+    $STH = $app['dbh']->prepare("UPDATE `core_settings` SET `value` = :value WHERE `core_settings`.`param` = :param");
     
     foreach ($request->request as $key => $value) {
         $STH->bindParam(':value', $value);

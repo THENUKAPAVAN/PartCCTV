@@ -307,6 +307,17 @@ webgui.phtml
 </div> -->
 
 <script>
+function htmlspecialchars(str) {
+ if (typeof(str) == "string") {
+  str = str.replace(/&/g, "&amp;"); /* must do &amp; first */
+  str = str.replace(/"/g, "&quot;");
+/*   str = str.replace(/'/g, "&#039;"); */
+  str = str.replace(/</g, "&lt;");
+  str = str.replace(/>/g, "&gt;");
+  }
+ return str;
+ }
+
 $(function() {
 //Cam Settings Modal
 $(document).on("click", ".open-CamSettings", function () {
@@ -316,7 +327,7 @@ $(document).on("click", ".open-CamSettings", function () {
 		type: "get",
 		dataType: "json",
 		error: function(xhr) {
-			console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+			console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
 		},
 		success: function(data) {
 			$('#cam_settings_id').val(data[0].id);
@@ -335,7 +346,7 @@ $.ajax({
     type: "get",
     dataType: "json",
     error: function(xhr) {
-        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
     },	
     success: function(data) {
         $('#core_status_ajax').html('<div class="progress-bar progress-bar-success" role="progressbar" style="width: '+ (data.total_space - data.free_space)/data.total_space*100 +'%;">На '+data.path+' свободно '+data.free_space+'Гб из '+data.total_space+'Гб</div>');
@@ -349,7 +360,7 @@ $.ajax({
     type: "get",
     dataType: "json",
     error: function(xhr) {
-        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
     },	
     success: function(data) {
         drawCamList(data);
@@ -405,7 +416,7 @@ $.ajax({
     type: "get",
     dataType: "json",
     error: function(xhr) {
-        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
     },	
     success: function(data) {
         drawSettingsModal(data);
@@ -436,7 +447,7 @@ function drawSettingsRaw(rawData) {
     return '<div class="control-group">' +
         '<label class="control-label" for="'+rawData.param+'">'+rawData.param+'</label>' +
         '<div class="controls">' +
-            '<input type="text" id="'+rawData.param+'" name="'+rawData.param+'" value="'+rawData.value+'"  required class="form-control input-lg">' +
+            '<input type="text" id="'+rawData.param+'" name="'+rawData.param+'" value="'+htmlspecialchars(rawData.value)+'"  required class="form-control input-lg">' +
         '</div>' +
     '</div>';
 }
@@ -449,7 +460,7 @@ $.ajax({
     url: "/api/1.0/platform/log", 
     dataType:"text", 
     error: function(xhr) {
-        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
     },
     success: function(a) {
         $('#core_log_ajax').html(a);
@@ -463,7 +474,7 @@ $.ajax({
     url: "/api/1.0/camera/log", 
     dataType:"text", 
     error: function(xhr) {
-        console.log('Ошибка!'+xhr.status+' '+xhr.statusText); 
+        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
     },
     success: function(a) {
         $('#cam_log_ajax').html(a);

@@ -9,16 +9,18 @@ PartCCTV, Yet Another CCTV App
   - Made with love :)  
   
 ### To Do List  
+- [*] API
 - [ ] WEB-GUI (in progress)
+- [ ] Systemd service
 - [ ] Better FFmpeg handler
 - [ ] Authentication, Authorization, Account Management & Audit Logging
-- [ ] Live Streaming from WEB-GUI (via second stream or full stream as fallback)
+- [ ] Live Stream Access from WEB-GUI (via second stream or full stream as fallback)
 - [ ] Webcam & Analog Support (via V4L)
 - [ ] Easy Install Script
 - [ ] Smart Telegram Bot (not only logging)
 - [ ] Localization
 - [ ] Documentation
-- [ ] Native :inux & Windows Client
+- [ ] Native Linux & Windows Client
 - [ ] Neural Network integraton 
 
 ## Installation
@@ -27,7 +29,7 @@ PartCCTV, Yet Another CCTV App
   - Configure `nginx` (using `install/nginx.conf` as example) or configure `Apache` (no example config: TBD)
   - Restore DB from .sql file (using `install/mysql.sql`, `install/postgre.sql` or converting it to another DB)
   - Configure `PartCCTV.ini` file
-  - Run core: `php server/starter.php` (TBD: systemd service)
+  - Run core: `php core/starter.php` (TBD: systemd service)
   - Set-up core with `web_gui` or `API`
   - That's all :)
   
