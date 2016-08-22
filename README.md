@@ -10,7 +10,7 @@ PartCCTV, Yet Another CCTV App
   
 ### To Do List  
 - [x] API
-- [ ] WEB-GUI (in progress)
+- [x] WEB-GUI (in progress)
 - [ ] Systemd service
 - [ ] Better FFmpeg handler
 - [ ] Authentication, Authorization, Account Management & Audit Logging
