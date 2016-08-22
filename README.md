@@ -9,7 +9,7 @@ PartCCTV, Yet Another CCTV App
   - Made with love :)  
   
 ### To Do List  
-- [-] API
+- [x] API
 - [ ] WEB-GUI (in progress)
 - [ ] Systemd service
 - [ ] Better FFmpeg handler
