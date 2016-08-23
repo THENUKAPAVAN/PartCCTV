@@ -8,16 +8,19 @@ PartCCTV, Yet Another CCTV App
   - Open Source
   - Made with love :)  
   
-### To Do List  
+### To Do List (1.0 Milestone)
 - [x] API
-- [x] WEB-GUI (in progress)
+- [x] WEB-GUI
 - [ ] Systemd service
-- [ ] Better FFmpeg handler
 - [ ] Authentication, Authorization, Account Management & Audit Logging
+  
+### To Do List (Global)
+- [ ] Better FFmpeg handler
+- [ ] Better Exception Handler & More Checks
 - [ ] Live Stream Access from WEB-GUI (via second stream or full stream as fallback)
-- [ ] Webcam & Analog Support (via V4L)
+- [ ] Custom Recorder Backend for every Camera
 - [ ] Easy Install Script
-- [ ] Smart Telegram Bot (not only logging)
+- [ ] Logging API
 - [ ] Localization
 - [ ] Documentation
 - [ ] Native Linux & Windows Client
