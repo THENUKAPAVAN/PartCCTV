@@ -68,9 +68,7 @@ $app->get('/api/1.0/platform/settings', function () use($app) {
 });
 
 // To Be Tested
-$app->put('/api/1.0/platform/settings', function (Request $request) use($app) {
-	
-	return $request;
+$app->post('/api/1.0/platform/settings', function (Request $request) use($app) {
     
     if(empty($request->request)) {
 		$app->abort(400, '400 Bad Request');        
@@ -177,7 +175,7 @@ $app->get('/api/1.0/camera/log', function () use ($app) {
     
 });
 
-$app->post('/api/1.0/camera/new', function (Request $request) use($app) {
+$app->put('/api/1.0/camera/new', function (Request $request) use($app) {
     //TBD
     
     // RestartIsRequired flag
@@ -191,7 +189,7 @@ $app->post('/api/1.0/camera/new', function (Request $request) use($app) {
     
 });
 
-$app->put('/api/1.0/camera/{camera}/', function (Request $request, $camera) use($app) {
+$app->post('/api/1.0/camera/{camera}/', function (Request $request, $camera) use($app) {
     //TBD
     
     // RestartIsRequired flag
