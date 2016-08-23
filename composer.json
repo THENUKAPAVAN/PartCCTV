@@ -6,5 +6,10 @@
         "monolog/monolog": "^1.19",
         "silex/silex": "~2.0",
         "unreal4u/telegram-api": "^1.2"        
+    },
+	"autoload": {
+        "classmap": [
+            "libs/MonologHandler.php"
+        ]
     }
 }

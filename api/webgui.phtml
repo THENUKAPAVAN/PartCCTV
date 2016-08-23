@@ -77,6 +77,7 @@ webgui.phtml
 			</button>
 			<a class="navbar-brand" href="/"><span>PartCCTV WEB GUI</span></a>
             <p class="navbar-text" id="core_pid"></p>
+            <p class="navbar-text" id="core_version"></p>			
 		</div>
 
 		<div class="collapse navbar-collapse" id="navbar-ex-collapse">
@@ -351,6 +352,7 @@ $.ajax({
     success: function(data) {
         $('#core_status_ajax').html('<div class="progress-bar progress-bar-success" role="progressbar" style="width: '+ (data.total_space - data.free_space)/data.total_space*100 +'%;">На '+data.path+' свободно '+data.free_space+'Гб из '+data.total_space+'Гб</div>');
         $('#core_pid').html('Core PID: '+ data.core_pid);
+		$('#core_version').html('Version: '+ data.core_version);
     }
 });
 

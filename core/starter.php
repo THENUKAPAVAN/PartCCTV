@@ -5,6 +5,8 @@
 // @license: CC BY-NC-SA 4.0
 // ------
 
+chdir(__DIR__);
+require_once __DIR__.'/../version.php';
 class PartCCTVCheckException extends Exception {};
 
 try {

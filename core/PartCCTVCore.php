@@ -5,13 +5,7 @@
 // @license: CC BY-NC-SA 4.0
 // ------
 
-chdir(__DIR__);
 require_once __DIR__.'/../vendor/autoload.php';
-require_once __DIR__.'/../libs/MonologHandler.php';
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
-use unreal4u\MonologHandler;
-use unreal4u\TgLog;
 
 class PartCCTVCore {
     protected $IF_Shutdown = 0;
@@ -34,10 +28,10 @@ class PartCCTVCore {
 		// Monolog
         if($this->PartCCTV_ini['monolog_stream']['enabled'] || $this->PartCCTV_ini['monolog_telegram']['enabled']) {
             // Main Log
-            $this->Logger  = new Logger('PartCCTV');
+            $this->Logger  = new Monolog\Logger('PartCCTV');
 
             // Cams Log
-            $this->CamLogger = new Logger('PartCCTV_CAM');       
+            $this->CamLogger = new Monolog\Logger('PartCCTV_CAM');       
             
             $LoggerRef = new \ReflectionClass( 'Monolog\Logger' );            
         }
@@ -45,13 +39,13 @@ class PartCCTVCore {
         //StreamHandler
         if($this->PartCCTV_ini['monolog_stream']['enabled']) {
             $level = $LoggerRef->getConstant( $this->PartCCTV_ini['monolog_stream']['log_level'] );
-            $this->Logger->pushHandler(new StreamHandler(__DIR__.'/../PartCCTV.log', $level));            
-    		$this->CamLogger->pushHandler(new StreamHandler(__DIR__.'/../PartCCTV_CAM.log', $level));	        
+            $this->Logger->pushHandler(new Monolog\Handler\StreamHandler(__DIR__.'/../PartCCTV.log', $level));            
+    		$this->CamLogger->pushHandler(new Monolog\Handler\StreamHandler(__DIR__.'/../PartCCTV_CAM.log', $level));	        
         }
         //TelegramHandler
         if($this->PartCCTV_ini['monolog_telegram']['enabled']) {
             $level = $LoggerRef->getConstant( $this->PartCCTV_ini['monolog_telegram']['log_level'] );            
-            $TelegramHandler = new MonologHandler(new TgLog($this->PartCCTV_ini['monolog_telegram']['token']), $this->PartCCTV_ini['monolog_telegram']['user_id'], $level);
+            $TelegramHandler = new unreal4u\MonologHandler(new unreal4u\TgLog($this->PartCCTV_ini['monolog_telegram']['token']), $this->PartCCTV_ini['monolog_telegram']['user_id'], $level);
             $this->Logger->pushHandler($TelegramHandler);
             $this->CamLogger->pushHandler($TelegramHandler);             
         }    	        
@@ -59,7 +53,7 @@ class PartCCTVCore {
 
     public function run() {	
 
-		$this->Logger->info('Запуск ядра платформы PartCCTV');
+		$this->Logger->info('Запуск ядра платформы PartCCTV '.PartCCTV_Version);
 		$this->Logger->info('PID ядра: '.$this->CorePID);		
 		
         //PDO
@@ -166,6 +160,7 @@ class PartCCTVCore {
 							
 						case 'core_status':
 							$status = array(
+								'core_version' => PartCCTV_Version,
 								'core_pid' => $this->CorePID,
 								'restart_required' => $this->IF_Restart_Required,							
 								'path' => $this->CoreSettings['path'],
