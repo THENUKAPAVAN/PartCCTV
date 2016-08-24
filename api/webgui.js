@@ -24,7 +24,7 @@ $(document).on("click", ".open-CamSettings", function () {
 		type: "get",
 		dataType: "json",
 		error: function(xhr) {
-			console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
+			console.log('РћС€РёР±РєР°! '+xhr.status+' '+xhr.statusText); 
 		},
 		success: function(data) {
 			$('#cam_settings_id').val(data[0].id);
@@ -43,10 +43,10 @@ $.ajax({
     type: "get",
     dataType: "json",
     error: function(xhr) {
-        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
+        console.log('РћС€РёР±РєР°! '+xhr.status+' '+xhr.statusText); 
     },	
     success: function(data) {
-        $('#core_status_ajax').html('<div class="progress-bar progress-bar-success" role="progressbar" style="width: '+ (data.total_space - data.free_space)/data.total_space*100 +'%;">На '+data.path+' свободно '+data.free_space+'Гб из '+data.total_space+'Гб</div>');
+        $('#core_status_ajax').html('<div class="progress-bar progress-bar-success" role="progressbar" style="width: '+ (data.total_space - data.free_space)/data.total_space*100 +'%;">РќР° '+data.path+' СЃРІРѕР±РѕРґРЅРѕ '+data.free_space+'Р“Р± РёР· '+data.total_space+'Р“Р±</div>');
         $('#core_pid').html('Core PID: '+ data.core_pid);
 		$('#core_version').html('Version: '+ data.core_version);
     }
@@ -58,7 +58,7 @@ $.ajax({
     type: "get",
     dataType: "json",
     error: function(xhr) {
-        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
+        console.log('РћС€РёР±РєР°! '+xhr.status+' '+xhr.statusText); 
     },	
     success: function(data) {
         drawCamList(data);
@@ -80,11 +80,11 @@ function drawCamListRaw(rawData) {
 
     if (rawData.enabled==0) {
         var error = '<div class="alert alert-warning">' +
-                        '<b>Камера отключена!</b>' +
+                        '<b>РљР°РјРµСЂР° РѕС‚РєР»СЋС‡РµРЅР°!</b>' +
                     '</div>';
     } else if (rawData.enabled==1 && !rawData.pid ) {
         var error = '<div class="alert alert-danger">' +
-                        '<b>Воркер не запущен, запись не производится!</b>' +
+                        '<b>Р’РѕСЂРєРµСЂ РЅРµ Р·Р°РїСѓС‰РµРЅ, Р·Р°РїРёСЃСЊ РЅРµ РїСЂРѕРёР·РІРѕРґРёС‚СЃСЏ!</b>' +
                     '</div>';    
     } else {
         var error = '';
@@ -98,9 +98,9 @@ function drawCamListRaw(rawData) {
             '<div class="panel-body">' +
                 error +
                 '<div class="btn-group btn-group-lg">' +
-                    '<a data-toggle="modal" data-target="#cam_stream" data-source="'+rawData.source+'" class="btn btn-success"><span class="glyphicon glyphicon-play" aria-hidden="true"></span> Прямой эфир</a>' +				
-                    '<a href="/archive/id'+rawData.id+'" class="btn btn-primary">Архив</a>' +				
-                    '<a data-toggle="modal" data-target="#cam_settings" data-id="'+rawData.id+'" class="open-CamSettings btn btn-warning">Настройки</a>' +
+                    '<a data-toggle="modal" data-target="#cam_stream" data-source="'+rawData.source+'" class="btn btn-success"><span class="glyphicon glyphicon-play" aria-hidden="true"></span> РџСЂСЏРјРѕР№ СЌС„РёСЂ</a>' +				
+                    '<a href="/archive/id'+rawData.id+'" class="btn btn-primary">РђСЂС…РёРІ</a>' +				
+                    '<a data-toggle="modal" data-target="#cam_settings" data-id="'+rawData.id+'" class="open-CamSettings btn btn-warning">РќР°СЃС‚СЂРѕР№РєРё</a>' +
                 '</div>' +
             '</div>' +
         '</div>' +
@@ -114,7 +114,7 @@ $.ajax({
     type: "get",
     dataType: "json",
     error: function(xhr) {
-        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
+        console.log('РћС€РёР±РєР°! '+xhr.status+' '+xhr.statusText); 
     },	
     success: function(data) {
         drawSettingsModal(data);
@@ -122,19 +122,19 @@ $.ajax({
 });
 
 function drawSettingsModal(data) {
-    //часть формы до полей, которые генерируем автоматически
+    //С‡Р°СЃС‚СЊ С„РѕСЂРјС‹ РґРѕ РїРѕР»РµР№, РєРѕС‚РѕСЂС‹Рµ РіРµРЅРµСЂРёСЂСѓРµРј Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё
     var html = '<form action="" method="post">' +
             '<fieldset>';
 
-    //генерируем html-код полей с именами и значениями из поступивших данных 
+    //РіРµРЅРµСЂРёСЂСѓРµРј html-РєРѕРґ РїРѕР»РµР№ СЃ РёРјРµРЅР°РјРё Рё Р·РЅР°С‡РµРЅРёСЏРјРё РёР· РїРѕСЃС‚СѓРїРёРІС€РёС… РґР°РЅРЅС‹С… 
     for (var i = 0; i < data.length; i++) {
         html += drawSettingsRaw(data[i]);
     }
 
-    //часть формы после генерируемых полей
+    //С‡Р°СЃС‚СЊ С„РѕСЂРјС‹ РїРѕСЃР»Рµ РіРµРЅРµСЂРёСЂСѓРµРјС‹С… РїРѕР»РµР№
     html += '<input type="hidden" name="action" value="platform_settings">' +
         '<br>' +
-        '<input class="btn btn-primary" type="submit" value="Сохранить">' +
+        '<input class="btn btn-primary" type="submit" value="РЎРѕС…СЂР°РЅРёС‚СЊ">' +
         '</fieldset>' +
     '</form>';
     
@@ -158,7 +158,7 @@ $.ajax({
     url: "/api/1.0/platform/log", 
     dataType:"text", 
     error: function(xhr) {
-        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
+        console.log('РћС€РёР±РєР°! '+xhr.status+' '+xhr.statusText); 
     },
     success: function(a) {
         $('#core_log_ajax').html(a);
@@ -172,7 +172,7 @@ $.ajax({
     url: "/api/1.0/camera/log", 
     dataType:"text", 
     error: function(xhr) {
-        console.log('Ошибка! '+xhr.status+' '+xhr.statusText); 
+        console.log('РћС€РёР±РєР°! '+xhr.status+' '+xhr.statusText); 
     },
     success: function(a) {
         $('#cam_log_ajax').html(a);
