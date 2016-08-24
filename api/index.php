@@ -27,7 +27,7 @@ $app['dbh'] = function () use ($app) {
 $app['zmq'] = function () {
     $ZMQRequester = new ZMQSocket(new ZMQContext(), ZMQ::SOCKET_REQ);
     $ZMQRequester->setSockOpt(ZMQ::SOCKOPT_RCVTIMEO, 1500);
-    $ZMQRequester->connect("tcp://127.0.0.1:5555");
+    $ZMQRequester->connect('tcp://127.0.0.1:5555');
     return $ZMQRequester;
 };
     
@@ -59,7 +59,7 @@ $app->get('/api/1.0/platform/status', function () use ($app) {
 
 $app->get('/api/1.0/platform/settings', function () use($app) {
 
-	$result = $app['dbh']->query("SELECT * FROM `core_settings`");
+	$result = $app['dbh']->query('SELECT * FROM `core_settings`');
     $result->setFetchMode(PDO::FETCH_ASSOC);
 	for ($set = array (); $row = $result->fetch(); $set[] = $row);
 
@@ -125,7 +125,7 @@ $app->post('/api/1.0/platform/stop', function () use($app) {
 $app->get('/api/1.0/camera/list', function () use($app) {
 
     // Массив $ar1 из БД
-	$result = $app['dbh']->query("SELECT * FROM `cam_list`");
+	$result = $app['dbh']->query('SELECT * FROM `cam_list`');
     $result->setFetchMode(PDO::FETCH_ASSOC);
 	for ($ar1 = array (); $row = $result->fetch(); $ar1[] = $row);
 
@@ -152,13 +152,11 @@ $app->get('/api/1.0/camera/list', function () use($app) {
 
 $app->get('/api/1.0/camera/{camera}/', function ($camera) use($app) {
 
-	$result = $app['dbh']->prepare("SELECT * FROM `cam_list` WHERE `id`= ?");
+	$result = $app['dbh']->prepare('SELECT * FROM `cam_list` WHERE `id`= ?');
 	$result->bindParam(1, $camera);
 	$result->execute();
     $result->setFetchMode(PDO::FETCH_ASSOC);
 	for ($ar = array (); $row = $result->fetch(); $ar[] = $row);
-
-
 
 	return $app->json($ar);
     
@@ -178,16 +176,10 @@ $app->put('/api/1.0/camera/new', function (Request $request) use($app) {
 		$app->abort(400, '400 Bad Request');        
     }
 	
-    //TBD
-    
-    // RestartIsRequired flag
-    try {
-        $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
-        return new Response($app['zmq']->recv(), 200, ['Content-Type' => 'application/json']);
-    } 
-    catch(UnexpectedValueException $e) {
-        return new Response('Partially OK', 200, ['Content-Type' => 'application/json']);            
-    }
+	$STH = $app['dbh']->prepare('INSERT INTO cam_list (id, title, enabled, source) VALUES (NULL, :title, 0, :source)');
+	$STH->execute(array('title' => $request->request['title'], 'source' => $request->request['source']));
+	
+	return new Response('OK', 200, ['Content-Type' => 'application/json']);       
     
 });
 

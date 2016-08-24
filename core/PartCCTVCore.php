@@ -65,7 +65,7 @@ class PartCCTVCore {
 			exit(1);            
         }        
             		
-		$CoreSettings_raw = $DBH->query("SELECT * FROM core_settings");
+		$CoreSettings_raw = $DBH->query('SELECT * FROM core_settings');
         $CoreSettings_raw->setFetchMode(PDO::FETCH_ASSOC);  
 		while ($row = $CoreSettings_raw->fetch()) {
 			$this->CoreSettings[$row['param']] = $row['value'];
@@ -78,7 +78,7 @@ class PartCCTVCore {
 			exit(1);
 		}
 		
-		$CamSettings_raw = $DBH->query("SELECT id FROM cam_list WHERE enabled = 1");
+		$CamSettings_raw = $DBH->query('SELECT id FROM cam_list WHERE enabled = 1');
         $CamSettings_raw->setFetchMode(PDO::FETCH_ASSOC);         
 		
 		//Для каждой камеры запускаем свой рабочий процесс			
@@ -94,7 +94,7 @@ class PartCCTVCore {
 		
 		//  Socket to talk to clients
 		$ZMQResponder = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REP);
-		$ZMQResponder->bind("tcp://*:5555");
+		$ZMQResponder->bind('tcp://*:5555');
 		$this->Logger->debug('Запущен ZeroMQ сервер');
 		while (TRUE) {
 			
@@ -104,14 +104,14 @@ class PartCCTVCore {
 			if ( (time() - $ArchiveCollectionTime) >= $this->CoreSettings['segment_time_min']*60 ) {
 				$this->Logger->debug('Очистка старых записей');
 				$ArchiveCollectionTime = time();
-				exec('find '.$this->CoreSettings["path"].' -type f -mtime +'.$this->CoreSettings["TTL"].' -delete > /dev/null &');				
+				exec('find '.$this->CoreSettings['path'].' -type f -mtime +'.$this->CoreSettings['TTL'].' -delete > /dev/null &');				
 			}
             		
 			$ZMQRequest = $ZMQResponder->recv (ZMQ::MODE_DONTWAIT);
 			
 			if($ZMQRequest) {
 			
-				$this->Logger->debug("Получен ZMQ запрос: ".$ZMQRequest);
+				$this->Logger->debug('Получен ZMQ запрос: '.$ZMQRequest);
 				
 				$Parsed_Request = json_decode($ZMQRequest, true);
 				
@@ -144,7 +144,7 @@ class PartCCTVCore {
 						
 						case 'worker_info':
 							if(isset($Parsed_Request['id'])) {
-								$CamInfo = $DBH->prepare("SELECT source FROM cam_list WHERE enabled = 1 AND id = :id");
+								$CamInfo = $DBH->prepare('SELECT source FROM cam_list WHERE enabled = 1 AND id = :id');
                                 $CamInfo->bindParam(':id', $Parsed_Request['id']);
                                 $CamInfo->execute();
 								$Response = $CamInfo->fetchColumn();
@@ -202,11 +202,11 @@ class PartCCTVCore {
 				}
 					
 				if(isset($Request_Error)) {
-					$this->Logger->INFO("Ошибка обработки запроса: ".$Request_Error);
+					$this->Logger->INFO('Ошибка обработки запроса: '.$Request_Error);
 					$ZMQResponder->send($Request_Error);
 					unset($Request_Error);
 				} elseif(isset($Response)) {
-					$this->Logger->DEBUG("Ответ платформы: ".$Response);
+					$this->Logger->DEBUG('Ответ платформы: '.$Response);
 					$ZMQResponder->send($Response);
 					unset($Response);
 				} elseif(isset($Response_Log)) {
@@ -260,39 +260,39 @@ class PartCCTVCore {
 			//Получаем информацию о камере
 			$ZMQContext = new ZMQContext();
 			$ZMQRequester = new ZMQSocket($ZMQContext, ZMQ::SOCKET_REQ);
-			$ZMQRequester->connect("tcp://localhost:5555");
+			$ZMQRequester->connect('tcp://localhost:5555');
 			$ZMQRequester->send(json_encode(array (	'action' => 'worker_info',	'id' => $id	)));
 			$worker_info = $ZMQRequester->recv();
-			$this->CamLogger->info("Запущен воркер id".$id." с PID ".getmypid());
-			exec('mkdir '.$this->CoreSettings["path"].'/id'.$id);		
+			$this->CamLogger->info('Запущен воркер id'.$id.' с PID '.getmypid());
+			exec('mkdir '.$this->CoreSettings['path'].'/id'.$id);		
 			$attempts = 0;
 			$time_to_sleep = 1;
 			$time_of_latest_major_fail = time();
 			
 			$Arr1 = array('%SOURCE%', '%SEGTIME_MIN%', '%SEGTIME_SEC%', '%REC_PATH%', '%CAM_ID%');
-			$Arr2 = array($worker_info, $this->CoreSettings["segment_time_min"], $this->CoreSettings["segment_time_min"]*60, $this->CoreSettings["path"], $id);
-			switch($this->CoreSettings["default_handler"]) {
+			$Arr2 = array($worker_info, $this->CoreSettings['segment_time_min'], $this->CoreSettings['segment_time_min']*60, $this->CoreSettings['path'], $id);
+			switch($this->CoreSettings['default_handler']) {
 				
 				case 'ffmpeg':
-					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings["ffmpeg_bin"]);
+					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings['ffmpeg_bin']);
 					break;
 				
 				case 'motion':
-					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings["motion_bin"]);
+					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings['motion_bin']);
 					break;
 				
 				case 'custom':
-					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings["custom_bin"]);
+					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings['custom_bin']);
 					break;
 				
 				default:
-					$this->CamLogger->WARNING("Unknown Default Handler ".$this->CoreSettings["default_handler"].", using ffmpeg");
-					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings["ffmpeg_bin"]);
+					$this->CamLogger->WARNING('Unknown Default Handler '.$this->CoreSettings['default_handler'].', using ffmpeg');
+					$Bin_Path = str_replace($Arr1, $Arr2, $this->CoreSettings['ffmpeg_bin']);
 					break;
 							
 			}	
 			unset($Arr1, $Arr2);
-			$this->CamLogger->debug("Bin_Path: ".$Bin_Path);
+			$this->CamLogger->debug('Bin_Path: '.$Bin_Path);
 			
 			WHILE(TRUE) {
 
@@ -301,7 +301,7 @@ class PartCCTVCore {
 				// А может нам пора выключиться?
 				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
 				if($ZMQRequester->recv()) {
-					$this->CamLogger->debug("Завершается воркер id".$id." с PID ".getmypid());
+					$this->CamLogger->debug('Завершается воркер id'.$id.' с PID '.getmypid());
 					exit(0);
 				} 	
 
@@ -312,7 +312,7 @@ class PartCCTVCore {
 					$time_of_latest_major_fail = time();
 					$attempts = 0;
 					$time_to_sleep = 1;
-					$this->CamLogger->NOTICE("Перезапущена запись с камеры id".$id);
+					$this->CamLogger->NOTICE('Перезапущена запись с камеры id'.$id);
 				} else {
 					// Хьюстон, у нас проблема
 					
@@ -329,7 +329,7 @@ class PartCCTVCore {
 						$attempts = 0;
 					} else {
 						++$attempts;
-						$this->CamLogger->WARNING("Перезапущена запись с камеры id".$id);	
+						$this->CamLogger->WARNING('Перезапущена запись с камеры id'.$id);	
 					}					
 				}								
 			}
