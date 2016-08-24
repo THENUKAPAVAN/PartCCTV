@@ -16,11 +16,11 @@ $app = new Silex\Application();
 $app['debug'] = $PartCCTV_ini['silex']['debug'];
 
 // Declare parameters.
-$app['db'] = $PartCCTV_ini;
+$app['db'] = $PartCCTV_ini['db'];
 
 // Declare a PDO service.
 $app['dbh'] = function () use ($app) {
-    return new PDO($app['db']['db']['dsn'], $app['db']['db']['user'], $app['db']['db']['password']);
+    return new PDO($app['db']['dsn'], $app['db']['user'], $app['db']['password']);
 };
 
 // Declare a ZMQ service.
@@ -67,21 +67,18 @@ $app->get('/api/1.0/platform/settings', function () use($app) {
 
 });
 
-// To Be Tested
 $app->post('/api/1.0/platform/settings', function (Request $request) use($app) {
-    
-    if(empty($request->request)) {
+	
+	if(count($request->request) === 0) {
 		$app->abort(400, '400 Bad Request');        
     }
-
-    $STH = $app['dbh']->prepare("UPDATE `core_settings` SET `value` = :value WHERE `core_settings`.`param` = :param");
+	
+    $STH = $app['dbh']->prepare('UPDATE core_settings SET value = :value WHERE param = :param');
     
-    foreach ($request->request as $key => $value) {
-        $STH->bindParam(':value', $value);
-        $STH->bindParam(':param', $key);
-        $STH->execute();
+    foreach ($request->request as $param => $value) {
+        $STH->execute(array('value' => $value, 'param' => $param));
     }
-
+	
     // RestartIsRequired flag
     try {
         $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));
@@ -176,6 +173,11 @@ $app->get('/api/1.0/camera/log', function () use ($app) {
 });
 
 $app->put('/api/1.0/camera/new', function (Request $request) use($app) {
+		
+	if(count($request->request) === 0) {
+		$app->abort(400, '400 Bad Request');        
+    }
+	
     //TBD
     
     // RestartIsRequired flag
@@ -190,7 +192,16 @@ $app->put('/api/1.0/camera/new', function (Request $request) use($app) {
 });
 
 $app->post('/api/1.0/camera/{camera}/', function (Request $request, $camera) use($app) {
-    //TBD
+	
+	if(count($request->request) === 0) {
+		$app->abort(400, '400 Bad Request');        
+    }
+	
+    $STH = $app['dbh']->prepare('UPDATE cam_list` SET :key = :value WHERE id = :id');
+    
+    foreach ($request->request as $key => $value) {
+        $STH->execute(array('key' => $key, 'value' => $value, 'id' => $camera));
+    }
     
     // RestartIsRequired flag
     try {
