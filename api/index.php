@@ -208,8 +208,9 @@ $app->post('/api/1.0/camera/{camera}/', function (Request $request, $camera) use
 
 $app->delete('/api/1.0/camera/{camera}/', function ($camera) use($app) {
     
-    //TBD
-    
+	$STH = $app['dbh']->prepare('DELETE FROM cam_list WHERE id = :id AND enabled = 0');
+	$STH->execute(array('id' => $camera));
+	    
     // RestartIsRequired flag
     try {
         $app['zmq']->send(json_encode(array (	'action' => 'core_restart_is_required' )));    
@@ -221,7 +222,7 @@ $app->delete('/api/1.0/camera/{camera}/', function ($camera) use($app) {
     
 });
 
-$app->get('/api/1.0/archive/list', function () use($app) {
+/* $app->get('/api/1.0/archive/list', function () use($app) {
     
     //TBD
     
@@ -231,6 +232,6 @@ $app->get('//api/1.0/archive/{camera}/', function ($camera) use($app) {
     
     //TBD
     
-});
+}); */
 
 $app->run(); 
