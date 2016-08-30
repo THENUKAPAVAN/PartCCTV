@@ -3,6 +3,9 @@
 ; (c) 2016 m1ron0xFF
 ; @license: CC BY-NC-SA 4.0
 ; ------
+[core]
+rus_as_systemd_service = false
+PIDLock_file = /var/run/partcctv.pid
 
 [db]
 dsn = 'mysql:host=localhost;dbname=cctv;charset=UTF8'

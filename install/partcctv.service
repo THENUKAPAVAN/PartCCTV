@@ -1,0 +1,11 @@
+[Unit]
+Description=PartCCTV Core Daemon
+
+[Service]
+PIDFile=/var/run/partcctv.pid
+ExecStart=/usr/bin/php /home/cctv/PartCCTV/core/starter.php
+Type=forking
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

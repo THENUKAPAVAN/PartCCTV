@@ -11,7 +11,7 @@ PartCCTV, Yet Another CCTV App
 ### To Do List (1.0 Milestone)
 - [x] API
 - [x] WEB-GUI
-- [ ] Systemd service
+- [x] Systemd service
 - [ ] Authentication, Authorization, Account Management & Audit Logging
   
 ### To Do List (Global)
@@ -31,7 +31,7 @@ PartCCTV, Yet Another CCTV App
   - Install all dependencies: `php composer.phar install`
   - Configure `nginx` (using `install/nginx.conf` as example) or configure `Apache` (no example config: TBD)
   - Restore DB from .sql file (using `install/mysql.sql`, `install/postgre.sql` or converting it to another DB)
-  - Configure `PartCCTV.ini` file
+  - Configure and rename `PartCCTV.ini.example` to `PartCCTV.ini` file
   - Run core: `php core/starter.php` (TBD: systemd service)
   - Set-up core with `web_gui` or `API`
   - That's all :)

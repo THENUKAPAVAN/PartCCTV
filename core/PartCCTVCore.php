@@ -16,6 +16,7 @@ class PartCCTVCore {
 	protected $Logger;
 	protected $CamLogger;
 	protected $PartCCTV_ini = array();    
+	protected $PIDLock_file;
 	
     public function __construct() {	
         pcntl_signal(SIGTERM, array($this, "signalHandler"));
@@ -48,8 +49,25 @@ class PartCCTVCore {
             $TelegramHandler = new unreal4u\MonologHandler(new unreal4u\TgLog($this->PartCCTV_ini['monolog_telegram']['token']), $this->PartCCTV_ini['monolog_telegram']['user_id'], $level);
             $this->Logger->pushHandler($TelegramHandler);
             $this->CamLogger->pushHandler($TelegramHandler);             
-        }    	        
+        }
+
+		// PID Lock
+		if($this->PartCCTV_ini['core']['rus_as_systemd_service']) {
+			$this->PIDLock_file = fopen($this->PartCCTV_ini['core']['PIDLock_file'], "w+");
+			if (flock($this->PIDLock_file, LOCK_EX)) { // выполняем эксклюзивную блокировку
+				ftruncate($this->PIDLock_file, 0); // очищаем файл
+				fwrite($this->PIDLock_file, $this->CorePID);
+			} else {
+				echo "Не удалось получить блокировку!";
+			}
+		}	
     }
+	
+	public function __destruct() {
+       // PID Lock
+			fflush($this->PIDLock_file);        // очищаем вывод перед отменой блокировки
+			flock($this->PIDLock_file, LOCK_UN); // отпираем файл
+   }
 
     public function run() {	
 
