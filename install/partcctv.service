@@ -1,11 +1,17 @@
 [Unit]
 Description=PartCCTV Core Daemon
+After=syslog.target
+After=network.target
+After=nginx.service
+After=mysql.service
 
 [Service]
 PIDFile=/var/run/partcctv.pid
 ExecStart=/usr/bin/php /home/cctv/PartCCTV/core/starter.php
 Type=forking
 KillMode=process
+
+TimeoutSec=30
 
 [Install]
 WantedBy=multi-user.target
