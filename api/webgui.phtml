@@ -10,51 +10,12 @@ webgui.phtml
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PartCCTV WEB GUI</title>
 <!-- Latest compiled and minified CSS -->
-<link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+<link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css">
 <!-- Optional theme -->
-<link rel="stylesheet" href="https://yastatic.net/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
-
-<!-- <link href="http://vjs.zencdn.net/5.10.7/video-js.css" rel="stylesheet"> -->
+<link rel="stylesheet" href="/bootstrap/css/bootstrap-theme.min.css">
 <style>
 .btn-menu{
    margin-top: 4px;
-}
-
-/***** Stream Modal *****/
-
-.streammodal-backdrop.in {
-	filter: alpha(opacity=7);
-	opacity: 0.7;
-}
-
-.streammodal-content {
-	background: none;
-	border: 0;
-	-moz-border-radius: 0; -webkit-border-radius: 0; border-radius: 0;
-	-moz-box-shadow: none; -webkit-box-shadow: none; box-shadow: none;
-}
-
-.streammodal-body {
-	padding: 0 25px 25px 25px;
-}
-
-.streammodal-header {
-	padding: 25px 25px 15px 25px;
-	text-align: right;
-}
-
-.streammodal-header, .streammodal-footer {
-	border: 0;
-}
-
-.streammodal-header .close {
-	float: none;
-	margin: 0;
-	font-size: 36px;
-	color: #fff;
-	font-weight: 300;
-	text-shadow: none;
-	opacity: 1;
 }
 </style>
 </head>
@@ -275,36 +236,9 @@ webgui.phtml
   </div>
 </div>
 
-<!-- Cam Stream Modal -->
-<!-- <div class="streammodal modal fade" id="cam_stream" tabindex="-1" role="dialog" aria-labelledby="cam_stream-label">
-	<div class="modal-dialog modal-lg" role="document">
-		<div class="streammodal-content modal-content">
-			<div class="streammodal-header modal-header">
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-					<span aria-hidden="true">&times;</span>
-				</button>
-			</div>
-			<div class="streammodal-body modal-body">
-				<div class="modal-video">
-					<div class="embed-responsive embed-responsive-16by9">
-					  <video id="video" class="video-js vjs-default-skin vjs-16-9 vjs-big-play-centered" controls preload="none" data-setup="{}"  width="720" height="576">
-						<source id="stream-source" src="rtmp://cp67126.edgefcs.net/ondemand/&mp4:mediapm/ovp/content/test/video/spacealonehd_sounas_640_300.mp4" type='rtmp/mp4'>
-						<p class="vjs-no-js">
-						  To view this video please enable JavaScript, and consider upgrading to a web browser that
-						  <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
-						</p>
-					  </video>					
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-</div> -->
-
-<script src="https://yastatic.net/jquery/2.2.3/jquery.min.js"></script>
-<script src="https://yastatic.net/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+<script src="/jquery-3.1.0.min.js"></script>
+<script src="/bootstrap/js/bootstrap.min.js"></script>
 <script src="/webgui.js"></script>
-<!-- <script src="http://vjs.zencdn.net/5.10.7/video.js"></script> -->
 
 </body>
 </html>
