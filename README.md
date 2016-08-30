@@ -12,9 +12,9 @@ PartCCTV, Yet Another CCTV App
 - [x] API
 - [x] WEB-GUI
 - [x] Systemd service
-- [ ] Authentication, Authorization, Account Management & Audit Logging
   
 ### To Do List (Global)
+- [ ] Authentication, Authorization, Account Management & Audit Logging
 - [ ] Better FFmpeg handler
 - [ ] Better Exception Handler & More Checks
 - [ ] Live Stream Access from WEB-GUI (via second stream or full stream as fallback)
