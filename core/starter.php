@@ -34,9 +34,15 @@ if ($child_pid) {
 	// Делаем основным процессом дочерний.
 	posix_setsid();
 
+	fclose(STDIN);
+	fclose(STDOUT);
+	fclose(STDERR);
+	$STDIN = fopen('/dev/null', 'r');
+	$STDOUT = fopen('/dev/null', 'r');
+	$STDERR = fopen('/dev/null', 'r');
 
-// Поехали!
-require 'PartCCTVCore.php';
-$PartCCTVCore = new PartCCTVCore;
-$PartCCTVCore->run();
+	// Поехали!
+	require 'PartCCTVCore.php';
+	$PartCCTVCore = new PartCCTVCore;
+	$PartCCTVCore->run();
 }	
