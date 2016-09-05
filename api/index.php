@@ -176,6 +176,11 @@ $app->put('/api/1.0/camera/new', function (Request $request) use($app) {
 		$app->abort(400, '400 Bad Request');        
     }
 	
+	// Проверка: запрос должен быть полным
+	if(!isset($request->request['title'], $request->request['source'])) {
+		return new Response('Incomplete request!', 500, ['Content-Type' => 'application/json']);    
+	}
+	
 	$STH = $app['dbh']->prepare('INSERT INTO cam_list (id, title, enabled, source) VALUES (NULL, :title, 0, :source)');
 	$STH->execute(array('title' => $request->request['title'], 'source' => $request->request['source']));
 	
@@ -188,6 +193,14 @@ $app->post('/api/1.0/camera/{camera}/', function (Request $request, $camera) use
 	if(count($request->request) === 0) {
 		$app->abort(400, '400 Bad Request');        
     }
+	
+	// Проверка: камера должна существовать
+	$STH = $app['dbh']->prepare('SELECT COUNT(*) FROM cam_list WHERE id = :id');
+	$STH->execute(array('id' => $camera));
+	$CameraExists = $STH->fetch(PDO::FETCH_NUM)[0];
+	if(!$CameraExists) {
+		return new Response('Unknown Camera ID!', 500, ['Content-Type' => 'application/json']);    
+	}
 	
     $STH = $app['dbh']->prepare('UPDATE cam_list` SET :key = :value WHERE id = :id');
     
@@ -207,6 +220,22 @@ $app->post('/api/1.0/camera/{camera}/', function (Request $request, $camera) use
 });
 
 $app->delete('/api/1.0/camera/{camera}/', function ($camera) use($app) {
+	
+	// Проверка: камера должна существовать
+	$STH = $app['dbh']->prepare('SELECT COUNT(*) FROM cam_list WHERE id = :id');
+	$STH->execute(array('id' => $camera));
+	$CameraExists = $STH->fetch(PDO::FETCH_NUM)[0];
+	if(!$CameraExists) {
+		return new Response('Unknown Camera ID!', 500, ['Content-Type' => 'application/json']);    
+	}
+	
+	// Проверка: камера должна быть отключена
+	$STH = $app['dbh']->prepare('SELECT COUNT(*) FROM cam_list WHERE id = :id AND enabled = 0');
+	$STH->execute(array('id' => $camera));
+	$CameraIsDisabled = $STH->fetch(PDO::FETCH_NUM)[0];
+	if(!$CameraIsDisabled) {
+		return new Response('Camera must be disabled!', 500, ['Content-Type' => 'application/json']);    
+	}
     
 	$STH = $app['dbh']->prepare('DELETE FROM cam_list WHERE id = :id AND enabled = 0');
 	$STH->execute(array('id' => $camera));
