@@ -8,6 +8,7 @@
 chdir(__DIR__);
 require_once __DIR__.'/../version.php';
 class PartCCTVCheckException extends Exception {};
+class PartCCTVException extends Exception {};
 
 try {
 	if (version_compare(PHP_VERSION, '7.0.0') < 0) {

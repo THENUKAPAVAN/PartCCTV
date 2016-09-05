@@ -26,16 +26,18 @@ class PartCCTVCore {
         
         $this->PartCCTV_ini = parse_ini_file(__DIR__.'/../PartCCTV.ini', true);
 
-		// Monolog
-        if($this->PartCCTV_ini['monolog_stream']['enabled'] || $this->PartCCTV_ini['monolog_telegram']['enabled']) {
-            // Main Log
-            $this->Logger  = new Monolog\Logger('PartCCTV');
 
-            // Cams Log
-            $this->CamLogger = new Monolog\Logger('PartCCTV_CAM');       
-            
-            $LoggerRef = new \ReflectionClass( 'Monolog\Logger' );            
-        }
+		// Main Log
+		$this->Logger  = new Monolog\Logger('PartCCTV');
+
+		// Cams Log
+		$this->CamLogger = new Monolog\Logger('PartCCTV_CAM');       
+		
+		// Register the logger to handle PHP errors and exceptions
+		Monolog\ErrorHandler::register($this->Logger);
+
+		$LoggerRef = new \ReflectionClass( 'Monolog\Logger' );            
+        
         
         //StreamHandler
         if($this->PartCCTV_ini['monolog_stream']['enabled']) {
@@ -58,7 +60,7 @@ class PartCCTVCore {
 				ftruncate($this->PIDLock_file, 0); // очищаем файл
 				fwrite($this->PIDLock_file, $this->CorePID);
 			} else {
-				echo "Не удалось получить блокировку!";
+				throw new PartCCTVException('Не удалось получить блокировку!');
 			}
 		}	
     }
@@ -72,16 +74,10 @@ class PartCCTVCore {
     public function run() {	
 
 		$this->Logger->info('Запуск ядра платформы PartCCTV '.PartCCTV_Version);
-		$this->Logger->info('PID ядра: '.$this->CorePID);		
+		$this->Logger->info('PID ядра: '.$this->CorePID);	
 		
         //PDO
-        try {
-            $DBH = new PDO($this->PartCCTV_ini['db']['dsn'], $this->PartCCTV_ini['db']['user'], $this->PartCCTV_ini['db']['password']);
-        }
-        catch(PDOException $e) {  
-			$this->Logger->EMERGENCY('Ошибка соединения с БД : '.$e->getMessage());
-			exit(1);            
-        }        
+		$DBH = new PDO($this->PartCCTV_ini['db']['dsn'], $this->PartCCTV_ini['db']['user'], $this->PartCCTV_ini['db']['password']);       
             		
 		$CoreSettings_raw = $DBH->query('SELECT * FROM core_settings');
         $CoreSettings_raw->setFetchMode(PDO::FETCH_ASSOC);  
@@ -92,8 +88,7 @@ class PartCCTVCore {
 		unset($row);
 		
 		if (empty($this->CoreSettings['segment_time_min'])) {
-			$this->Logger->EMERGENCY('segment_time_min не может быть равен нулю!!! Аварийное завершение.');
-			exit(1);
+			throw new PartCCTVException('segment_time_min не может быть равен нулю!!!');
 		}
 		
 		$CamSettings_raw = $DBH->query('SELECT id FROM cam_list WHERE enabled = 1');
@@ -253,7 +248,6 @@ class PartCCTVCore {
 					// Хьюстон, у нас проблема, прошло больше минуты, а вырубились не все дочерние процессы
 					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все воркеры завершены!');
 					exec('killall -s9 php');
-					exit(1);
 				}
 			}
 		}
