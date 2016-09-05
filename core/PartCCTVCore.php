@@ -225,9 +225,10 @@ class PartCCTVCore {
 					unset($Response_Log);
 				}				
 
-			} else {
-				sleep(1);
-			}
+			} 
+			
+			// КОСТЫЛЬ
+			sleep(1);
 
 			// Завершаем ядро при необходимости
 			if ($this->IF_Shutdown) {
@@ -241,11 +242,12 @@ class PartCCTVCore {
 				
 				if (count($this->WorkerPIDs) === 0) {
 					$this->Logger->INFO('Завершение работы ядра платформы');
-					exit(0);
+					break;
 				} elseif (time() - $shutdown_time > 60) {
 					// Хьюстон, у нас проблема, прошло больше минуты, а вырубились не все дочерние процессы
 					$this->Logger->EMERGENCY ('Аварийное завершение работы платформы: не все воркеры завершены!');
 					exec('killall -s9 php');
+					break;
 				}
 			}
 		}
@@ -312,7 +314,7 @@ class PartCCTVCore {
 				$ZMQRequester->send(json_encode(array (	'action' => 'worker_if_shutdown' )));
 				if($ZMQRequester->recv()) {
 					$this->CamLogger->debug('Завершается воркер id'.$id.' с PID '.getmypid());
-					exit(0);
+					break;
 				} 	
 
 				sleep($time_to_sleep);				
