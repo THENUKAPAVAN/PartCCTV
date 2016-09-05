@@ -5,8 +5,6 @@
 // @license: CC BY-NC-SA 4.0
 // ------
 
-require_once __DIR__.'/../vendor/autoload.php';
-
 class PartCCTVCore {
     protected $IF_Shutdown = 0;
 	protected $IF_Restart_Required = 0;
