@@ -52,7 +52,7 @@ class PartCCTVCore {
         }
 
 		// PID Lock
-		if($this->PartCCTV_ini['core']['rus_as_systemd_service']) {
+		if($this->PartCCTV_ini['core']['run_as_systemd_service']) {
 			$this->PIDLock_file = fopen($this->PartCCTV_ini['core']['PIDLock_file'], "w+");
 			if (flock($this->PIDLock_file, LOCK_EX)) { // выполняем эксклюзивную блокировку
 				ftruncate($this->PIDLock_file, 0); // очищаем файл
@@ -69,7 +69,10 @@ class PartCCTVCore {
 			flock($this->PIDLock_file, LOCK_UN); // отпираем файл
    }
 
-    public function run() {	
+    /**
+     * @throws PartCCTVException
+     */
+    public function run() {
 
 		$this->Logger->info('Запуск ядра платформы PartCCTV '.PartCCTV_Version);
 		$this->Logger->info('PID ядра: '.$this->CorePID);	
@@ -193,11 +196,24 @@ class PartCCTVCore {
 							break;					
 
 						case 'core_stop':
-							exec('kill '.$this->CorePID);
-							$Response = 'OK';
-							break;								
-							
-						case 'core_log':
+                            if($this->PartCCTV_ini['run_as_systemd_service']) {
+                                $Response = 'Action is disabled!'; }
+                            else{
+                                exec('kill '.$this->CorePID);
+                                $Response = 'OK';
+                            }
+                            break;
+
+                        case 'core_restart':
+                            if($this->PartCCTV_ini['run_as_systemd_service']) {
+                                exec('service partcctv restart');
+                                $Response = 'OK'; }
+                            else{
+                                $Response = 'Not a service!';
+                            }
+                            break;
+
+                        case 'core_log':
 							$Response_Log = file_get_contents(__DIR__.'/../PartCCTV.log');			
 							break;	
 							
@@ -227,7 +243,7 @@ class PartCCTVCore {
 
 			} 
 			
-			// КОСТЫЛЬ
+			//TODO: КОСТЫЛЬ
 			sleep(1);
 
 			// Завершаем ядро при необходимости

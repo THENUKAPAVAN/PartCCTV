@@ -4,7 +4,7 @@
 ; @license: CC BY-NC-SA 4.0
 ; ------
 [core]
-rus_as_systemd_service = false
+run_as_systemd_service = false
 PIDLock_file = /var/run/partcctv.pid
 
 [db]
