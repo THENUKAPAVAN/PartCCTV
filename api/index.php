@@ -148,16 +148,24 @@ $app->get('/api/1.0/camera/list', function () use ($app) {
 
 });
 
-$app->get('/api/1.0/camera/{camera}/', function ($camera) use ($app) {
+$app->get('/api/1.0/camera/{camera}/', function ($camera) use($app) {
+	
+	// Проверка: камера должна существовать
+	$STH = $app['dbh']->prepare('SELECT COUNT(*) FROM cam_list WHERE id = :id');
+	$STH->execute(array('id' => $camera));
+	$CameraExists = $STH->fetch(PDO::FETCH_NUM)[0];
+	if(!$CameraExists) {
+		return new Response('Unknown Camera ID!', 500, ['Content-Type' => 'application/json']);    
+	}
 
-    $result = $app['dbh']->prepare('SELECT * FROM `cam_list` WHERE `id`= ?');
-    $result->bindParam(1, $camera);
-    $result->execute();
+	$result = $app['dbh']->prepare('SELECT * FROM cam_list WHERE id= ?');
+	$result->bindParam(1, $camera);
+	$result->execute();
     $result->setFetchMode(PDO::FETCH_ASSOC);
-    for ($ar = array(); $row = $result->fetch(); $ar[] = $row) ;
+	for ($ar = array (); $row = $result->fetch(); $ar[] = $row);
 
-    return $app->json($ar);
-
+	return $app->json($ar);
+    
 });
 
 $app->get('/api/1.0/camera/log', function () use ($app) {
